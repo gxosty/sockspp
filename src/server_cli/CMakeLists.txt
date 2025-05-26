@@ -10,3 +10,13 @@ list(APPEND SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+target_include_directories(
+    ${PROJECT_NAME} PRIVATE
+    $<TARGET_PROPERTY:sockspp-server,INCLUDE_DIRECTORIES>
+)
+
+target_link_directories(
+    ${PROJECT_NAME} PRIVATE
+    sockspp-server
+)
