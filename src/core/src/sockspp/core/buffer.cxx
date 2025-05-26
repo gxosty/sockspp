@@ -12,7 +12,7 @@ Buffer::Buffer(size_t capacity) : _size{0}
 
     if (!_data)
     {
-        throw MemoryAllocationError(capacity);
+        throw MemoryAllocationException(capacity);
     }
 
     *(char*)_data = 0;

@@ -19,3 +19,10 @@ target_include_directories(
     ${PROJECT_NAME} PUBLIC
     src
 )
+
+if(WIN32)
+    target_link_libraries(
+        ${PROJECT_NAME} PUBLIC
+        ws2_32
+    )
+endif()
