@@ -20,7 +20,7 @@
     char _time_buffer[24]; strftime(_time_buffer, 24, "%H:%M:%S", _current_time); \
     _SOCKSPP_IN_TTFL_LOG(_tag, _time_buffer, _filename, _line) \
     printf(__VA_ARGS__); \
-    puts("\n"); \
+    puts(""); \
 }
 
 #define _SOCKSPP_LOG(_tag, ...) \

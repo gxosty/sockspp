@@ -13,7 +13,7 @@ extern "C" {
 int sockspp_main(int argc, char* argv[])
 {
     sockspp_print_greeting();
-    
+
     return 0;
 }
 

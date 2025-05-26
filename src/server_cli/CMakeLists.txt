@@ -16,7 +16,7 @@ target_include_directories(
     $<TARGET_PROPERTY:sockspp-server,INCLUDE_DIRECTORIES>
 )
 
-target_link_directories(
+target_link_libraries(
     ${PROJECT_NAME} PRIVATE
     sockspp-server
 )
