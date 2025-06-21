@@ -7,4 +7,6 @@
     {
         using Poller = sockspp::EpollPoller;
     }
+#else
+    #error "Unsupported platform"
 #endif
