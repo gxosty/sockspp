@@ -9,6 +9,12 @@ list(APPEND SOURCES
     src/sockspp/core/socket.cxx
 )
 
+if(WIN32)
+    list(APPEND SOURCES
+        thirdparty/wepoll/wepoll.c
+    )
+endif()
+
 if(SOCKSPP_BUILD_SHARED)
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
 else()
@@ -21,8 +27,17 @@ target_include_directories(
 )
 
 if(WIN32)
-    target_link_libraries(
-        ${PROJECT_NAME} PUBLIC
+    list(APPEND LIBRARIES
         ws2_32
     )
+
+    target_include_directories(
+        ${PROJECT_NAME} PUBLIC
+        thirdparty/wepoll
+    )
 endif()
+
+target_link_libraries(
+    ${PROJECT_NAME} PUBLIC
+    ${LIBRARIES}
+)

@@ -70,6 +70,17 @@ public:
     ) {}
 }; // class MemoryAllocationError
 
+class PollerCreationException : public Exception
+{
+public:
+    explicit PollerCreationException(std::string where = "")
+    : Exception(
+        strerror(sockerrno),
+        std::move(where),
+        sockerrno
+    ) {}
+}; // class PollerCreationException
+
 class SocketCreationException : public Exception
 {
 public:

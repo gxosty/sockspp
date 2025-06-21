@@ -1,9 +1,9 @@
-#include <sockspp/server/server.hpp>
-#include <sockspp/core/log.hpp>
-
 #ifdef _WIN32
     #include <winsock2.h>
 #endif // _WIN32
+
+#include <sockspp/server/server.hpp>
+#include <sockspp/core/log.hpp>
 
 static inline void sockspp_print_greeting()
 {

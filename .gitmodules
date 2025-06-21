@@ -1,0 +1,3 @@
+[submodule "src/core/thirdparty/wepoll"]
+	path = src/core/thirdparty/wepoll
+	url = https://github.com/piscisaureus/wepoll
