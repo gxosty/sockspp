@@ -69,8 +69,6 @@ void Socket::connect(const std::string& ip, uint16_t port)
     {
         throw SocketConnectionException();
     }
-
-    return 0;
 }
 
 void Socket::bind(const std::string& ip, uint16_t port)
@@ -83,8 +81,6 @@ void Socket::bind(const std::string& ip, uint16_t port)
     {
         throw SocketBindException();
     }
-
-    return 0;
 }
 
 int Socket::recv(Buffer& buffer, int flags)
