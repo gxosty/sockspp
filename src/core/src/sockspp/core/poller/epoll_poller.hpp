@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sockspp/core/poller/event.hpp>
-#include <sockspp/core/exceptions.hpp>
+#include "event.hpp"
+#include "../exceptions.hpp"
 
 #ifdef _WIN32
     #include <wepoll.h>
@@ -13,6 +13,7 @@
     #include <sys/epoll.h>
     typedef int epoll_handle_t;
     #define SOCKSPP_INVALID_POLLER -1
+    #define epoll_close(fd) close(fd)
 #endif // _WIN32
 
 #define POLL_BATCH 512
@@ -39,11 +40,7 @@ public:
     {
         if (_fd != SOCKSPP_INVALID_POLLER)
         {
-#if defined(_WIN32)
             epoll_close(_fd);
-#elif defined(__linux__)
-            close(_fd);
-#endif
             _fd = SOCKSPP_INVALID_POLLER;
         }
     }
@@ -95,7 +92,7 @@ public:
         {
             auto event = events[i];
             out_events.emplace_back(
-                event.data.fd,
+                0,  // I am shocked but that's literally how epoll works
                 static_cast<Event::Flags>(event.events),
                 event.data.ptr
             );

@@ -43,6 +43,11 @@ Socket::Socket(int domain, int type, int protocol)
     }
 }
 
+Socket::Socket(int fd)
+{
+    _fd = fd;
+}
+
 Socket::Socket(Socket&& other)
 {
     _fd = other._fd;
@@ -57,6 +62,30 @@ Socket::~Socket()
 Socket Socket::open_tcp()
 {
     return Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+}
+
+bool Socket::set_blocking(bool enabled)
+{
+#if (_WIN32)
+    unsigned long block = !enabled;
+    return ioctlsocket(_fd, FIONBIO, &block);
+#elif __has_include(<sys/ioctl.h>) && defined(FIONBIO)
+    unsigned int block = !enabled;
+    return ioctl(_fd, FIONBIO, &block);
+#else
+    int delay_flag, new_delay_flag;
+    delay_flag = fcntl(_fd, F_GETFL, 0);
+
+    if (delay_flag == -1)
+        return false;
+
+    new_delay_flag = enabled ? (delay_flag & ~O_NONBLOCK) : (delay_flag | O_NONBLOCK);
+
+    if (new_delay_flag != delay_flag)
+        return !fcntl(_fd, F_SETFL, new_delay_flag);
+
+    return false;
+#endif
 }
 
 void Socket::connect(const std::string& ip, uint16_t port)
@@ -81,6 +110,44 @@ void Socket::bind(const std::string& ip, uint16_t port)
     {
         throw SocketBindException();
     }
+}
+
+void Socket::listen(int count)
+{
+    ::listen(_fd, count);
+}
+
+Socket Socket::accept(SocketInfo* info)
+{
+    sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+
+    int new_socket = ::accept(_fd, reinterpret_cast<sockaddr*>(&addr), &addr_len);
+
+    if (new_socket == -1)
+    {
+        throw SocketAcceptException();
+    }
+
+    if (info)
+    {
+        if (addr.ss_family == AF_INET)
+        {
+            sockaddr_in* s = reinterpret_cast<sockaddr_in*>(&addr);
+            memcpy(info->ip, reinterpret_cast<void*>(&s->sin_addr), sizeof(s->sin_addr));
+            info->port = ntohs(s->sin_port);
+            info->ip_version = SocketInfo::IPv4;
+        }
+        else if (addr.ss_family == AF_INET6)
+        {
+            sockaddr_in6* s = reinterpret_cast<sockaddr_in6*>(&addr);
+            memcpy(info->ip, reinterpret_cast<void*>(&s->sin6_addr), sizeof(s->sin6_addr));
+            info->port = ntohs(s->sin6_port);
+            info->ip_version = SocketInfo::IPv6;
+        }
+    }
+
+    return Socket(new_socket);
 }
 
 int Socket::recv(Buffer& buffer, int flags)
@@ -124,11 +191,13 @@ void Socket::close()
     if (_fd != -1)
     {
 #ifdef _WIN32
-        closesocket(_fd);
+        ::closesocket(_fd);
 #else
         ::close(_fd);
 #endif
     }
+
+    _fd = -1;
 }
 
 int Socket::shutdown(int mode)
@@ -145,11 +214,48 @@ int Socket::shutdown(int mode)
     return ::shutdown(_fd, mode);
 }
 
+int Socket::get_fd() const
+{
+    return _fd;
+}
+
 int Socket::detach()
 {
     int fd = _fd;
     _fd = -1;
     return fd;
+}
+
+std::string SocketInfo::str() const
+{
+    std::string address_str;
+    
+    if (this->ip_version == IPv4)
+    {
+        char ipstr[16];
+        inet_ntop(
+            AF_INET,
+            this->ip,
+            ipstr,
+            16
+        );
+        address_str += std::string(ipstr);
+    }
+    else if (this->ip_version == IPv6)
+    {
+        char ipstr[40];
+        inet_ntop(
+            AF_INET6,
+            this->ip,
+            ipstr,
+            40
+        );
+        address_str += std::string(ipstr, 39);
+    }
+
+    address_str += ":" + std::to_string(ntohs(this->port));
+
+    return address_str;
 }
 
 } // namespace sockspp

@@ -92,6 +92,28 @@ public:
     ) {}
 }; // class SocketCreationException
 
+class SocketBindException : public Exception
+{
+public:
+    explicit SocketBindException(std::string where = "")
+    : Exception(
+        strerror(sockerrno),
+        std::move(where),
+        sockerrno
+    ) {}
+}; // class SocketBindException
+
+class SocketAcceptException : public Exception
+{
+public:
+    explicit SocketAcceptException(std::string where = "")
+    : Exception(
+        strerror(sockerrno),
+        std::move(where),
+        sockerrno
+    ) {}
+}; // class SocketAcceptException
+
 class SocketConnectionException : public Exception
 {
 public:
