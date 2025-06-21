@@ -13,6 +13,22 @@
 namespace sockspp
 {
 
+static void _make_address(const std::string& ip, uint16_t port, sockaddr_storage& addr)
+{
+    addr.ss_family = AF_INET;
+
+    if (inet_pton(AF_INET, ip.c_str(), &((sockaddr_in*)&addr)->sin_addr))
+    {
+        ((sockaddr_in*)&addr)->sin_port = htons(port);
+    }
+    else
+    {
+        addr.ss_family = AF_INET6;
+        inet_pton(AF_INET6, ip.c_str(), &((sockaddr_in6*)&addr)->sin6_addr);
+        ((sockaddr_in6*)&addr)->sin6_port = htons(port);
+    }
+}
+
 Socket::Socket(int domain, int type, int protocol)
 {
 #ifdef _WIN32
@@ -38,25 +54,34 @@ Socket::~Socket()
     this->close();
 }
 
-int Socket::connect(const std::string& ip, uint16_t port)
+Socket Socket::open_tcp()
+{
+    return Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+}
+
+void Socket::connect(const std::string& ip, uint16_t port)
 {
     sockaddr_storage addr;
-    addr.ss_family = AF_INET;
 
-    if (inet_pton(AF_INET, ip.c_str(), &((sockaddr_in*)&addr)->sin_addr))
-    {
-        ((sockaddr_in*)&addr)->sin_port = htons(port);
-    }
-    else
-    {
-        addr.ss_family = AF_INET6;
-        inet_pton(AF_INET6, ip.c_str(), &((sockaddr_in6*)&addr)->sin6_addr);
-        ((sockaddr_in6*)&addr)->sin6_port = htons(port);
-    }
+    _make_address(ip, port, addr);
 
     if (::connect(_fd, (sockaddr*)&addr, addr.ss_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6)) != 0)
     {
         throw SocketConnectionException();
+    }
+
+    return 0;
+}
+
+void Socket::bind(const std::string& ip, uint16_t port)
+{
+    sockaddr_storage addr;
+
+    _make_address(ip, port, addr);
+
+    if (::bind(_fd, (sockaddr*)&addr, addr.ss_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6)) != 0)
+    {
+        throw SocketBindException();
     }
 
     return 0;
