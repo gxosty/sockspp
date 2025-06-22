@@ -1,6 +1,9 @@
 #include "session.hpp"
 #include "server.hpp"
+#include "sockspp/core/s5.hpp"
+
 #include <cstdint>
+#include <sockspp/core/s5.hpp>
 #include <sockspp/core/memory_buffer.hpp>
 #include <sockspp/core/poller/event.hpp>
 #include <sockspp/core/log.hpp>
@@ -91,9 +94,11 @@ bool Session::process_client(MemoryBuffer& buffer)
     switch (_state)
     {
     case Session::State::Accepted:
-        return _check_version(buffer) && _handle_auth(buffer);
+        return _check_version(buffer) && _request_auth(buffer);
     case Session::State::AuthRequested:
         return _handle_auth(buffer);
+    case Session::State::Authenticated:
+        return _handle_command(buffer);
     default:
         break;
     }
@@ -155,14 +160,85 @@ bool Session::_request_auth(MemoryBuffer& buffer)
         return false;
     }
 
-    _set_state(Session::State::AuthRequested);
+    if (selected_method == AuthMethod::NoAuth)
+    {
+        _set_state(Session::State::Authenticated);
+    }
+    else if (selected_method == AuthMethod::UserPass)
+    {
+        _set_state(Session::State::AuthRequested);
+    }
+
     return true;
 }
 
 bool Session::_handle_auth(MemoryBuffer& buffer)
 {
-    _client_socket->send_auth_status(0xFF);
-    LOGI("Wrong client username or password");
+    uint8_t* data = buffer.as<uint8_t*>();
+    size_t data_size = buffer.get_size();
+
+    data += 1; // skip version
+    uint8_t username_len = data[0];
+
+    if (username_len > (data_size - 2))
+    {
+        // someone must be trying to play a segfault game with us
+        LOGE("Username length is longer than the buffer itself");
+        return false;
+    }
+
+    data += 1 + username_len; // skip username and length
+    uint8_t password_len = data[0];
+
+    if (password_len > (data_size - username_len - 3))
+    {
+        // the same story
+        LOGE("Password length is longer than the buffer itself");
+        return false;
+    }
+
+    std::string username;
+    std::string password;
+
+    if (username_len)
+        username = std::string(buffer.as<char*>() + 2, username_len);
+
+    if (password_len)
+        password = std::string(buffer.as<char*>() + 3 + username_len, password_len);
+
+    if (!_server.authenticate(username, password))
+    {
+        _client_socket->send_auth_status(0xFF);
+        LOGI("Wrong client username or password");
+        return false;
+    }
+
+    _client_socket->send_auth_status(0x00);
+    _set_state(Session::State::Authenticated);
+    LOGI("Client authentication succeeded");
+    return true;
+}
+
+bool Session::_handle_command(MemoryBuffer& buffer)
+{
+    uint8_t* data = buffer.as<uint8_t*>();
+    CommandMessage message(data);
+
+    Command command = message.get_command();
+
+    switch (command)
+    {
+    case Command::Connect:
+        break;
+    case Command::Bind:
+        break;
+    case Command::UdpAssociate:
+        break;
+    default:
+        LOGE("Invalid command");
+        return false;
+    }
+
     return false;
 }
 

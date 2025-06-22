@@ -5,6 +5,7 @@ set(PROJECT_NAME sockspp-core)
 project(${PROJECT_NAME})
 
 list(APPEND SOURCES
+    src/sockspp/core/s5.cxx
     src/sockspp/core/buffer.cxx
     src/sockspp/core/socket.cxx
 )

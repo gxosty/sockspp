@@ -56,6 +56,8 @@ int sockspp_main(int argc, char* argv[])
 
     params.listen_ip = "192.168.1.104";
     params.listen_port = 2080;
+    params.username = "username";
+    params.password = "password";
 
     g_server = new sockspp::Server(std::move(params));
     prepare_sigint();

@@ -29,7 +29,8 @@ bool ClientSocket::process()
     }
 
 #if !SOCKSPP_DISABLE_LOGS
-    LOGI("Client closed connection");
+    if (buffer.get_size() == 0)
+        LOGI("Client closed connection");
 #endif
 
     if (status)

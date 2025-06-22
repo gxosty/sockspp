@@ -5,7 +5,7 @@
 
 #include <sockspp/core/s5_enums.hpp>
 #include <sockspp/core/socket.hpp>
-#include <sockspp/core/poller/Poller.hpp>
+#include <sockspp/core/poller/poller.hpp>
 
 namespace sockspp
 {

@@ -5,6 +5,7 @@
 
 #include <sockspp/core/poller/poller.hpp>
 #include <sockspp/core/socket.hpp>
+#include <sockspp/core/s5_enums.hpp>
 
 namespace sockspp
 {
@@ -19,6 +20,7 @@ public:
         Accepted,
         AuthRequested,
         Authenticated,
+        ConnectingRemote,
         Connected,
         Invalid
     };
@@ -43,6 +45,7 @@ private:
     bool _check_version(MemoryBuffer& buffer);
     bool _request_auth(MemoryBuffer& buffer);
     bool _handle_auth(MemoryBuffer& buffer);
+    bool _handle_command(MemoryBuffer& buffer);
 
 private:
     const Server& _server;
@@ -52,6 +55,7 @@ private:
     // UDPSocket _udp_socket;
     
     State _state = State::Invalid;
+    Command _command = Command::Invalid;
 }; // class Session
 
 } // namespace sockspp
