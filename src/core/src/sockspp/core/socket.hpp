@@ -1,6 +1,6 @@
 #pragma once
 
-#include "buffer.hpp"
+#include "memory_buffer.hpp"
 
 #include <string>
 #include <cstdint>
@@ -29,9 +29,9 @@ public:
     void listen(int count);
     Socket accept(SocketInfo* info = nullptr);
 
-    int recv(Buffer& buffer, int flags = 0);
+    int recv(MemoryBuffer& buffer, int flags = 0);
     int recv(char* buffer, size_t size, int flags = 0);
-    int send(Buffer& buffer, int flags = 0);
+    int send(MemoryBuffer& buffer, int flags = 0);
     int send(const char* buffer, size_t size, int flags = 0);
 
     void close();

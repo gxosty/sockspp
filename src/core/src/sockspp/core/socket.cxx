@@ -1,3 +1,4 @@
+#include "sockspp/core/memory_buffer.hpp"
 #include <sockspp/core/socket.hpp>
 #include <sockspp/core/exceptions.hpp>
 
@@ -150,9 +151,14 @@ Socket Socket::accept(SocketInfo* info)
     return Socket(new_socket);
 }
 
-int Socket::recv(Buffer& buffer, int flags)
+int Socket::recv(MemoryBuffer& buffer, int flags)
 {
-    size_t size = ::recv(_fd, buffer.cstr(), buffer.get_capacity(), flags);
+    size_t size = ::recv(
+        _fd,
+        buffer.as<char*>(),
+        buffer.get_capacity(),
+        flags
+    );
 
     if (size == -1)
     {
@@ -169,9 +175,14 @@ int Socket::recv(char* buffer, size_t size, int flags)
     return ::recv(_fd, buffer, size, flags);
 }
 
-int Socket::send(Buffer& buffer, int flags)
+int Socket::send(MemoryBuffer& buffer, int flags)
 {
-    size_t size = ::send(_fd, buffer.cstr(), buffer.get_size(), flags);
+    size_t size = ::send(
+        _fd,
+        buffer.as<char*>(),
+        buffer.get_size(),
+        flags
+    );
 
     if (size == -1)
     {

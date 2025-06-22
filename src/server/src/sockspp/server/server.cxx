@@ -1,4 +1,6 @@
 #include "server.hpp"
+#include "session.hpp"
+#include "session_socket.hpp"
 #include <sockspp/core/poller/poller.hpp>
 #include <sockspp/core/poller/event.hpp>
 #include <sockspp/core/log.hpp>
@@ -17,6 +19,16 @@ namespace sockspp
 
 Server::Server(const ServerParams&& params)
     : _params(std::move(params)) {}
+
+AuthMethod Server::get_auth_method() const
+{
+    if (_params.username.empty() && _params.password.empty())
+    {
+        return AuthMethod::NoAuth;
+    }
+
+    return AuthMethod::UserPass;
+}
 
 void Server::serve()
 {
@@ -75,11 +87,19 @@ void Server::serve()
         {
             if (event.get_ptr() == reinterpret_cast<void*>(this))
             {
-                _accept_new_client();
+                Socket client = _accept_client();
+                _create_new_session(poller, std::move(client));
             }
             else
             {
-                LOGD("TODO: process splice");
+                SessionSocket* session_socket = \
+                    reinterpret_cast<SessionSocket*>(event.get_ptr());
+
+                if (!session_socket->process())
+                {
+                    Session* session = &session_socket->get_session();
+                    _delete_session(session);
+                }
             }
         }
     }
@@ -106,13 +126,25 @@ bool Server::is_serving() const
     return _server_socket.get_fd() != -1;
 }
 
-void Server::_accept_new_client()
+Socket Server::_accept_client()
 {
     SocketInfo client_info;
     Socket client = _server_socket.accept(&client_info);
-
     LOGI("Accepted: %s", client_info.str().c_str());
+    return client;
+}
 
+Session* Server::_create_new_session(Poller& poller, Socket&& sock)
+{
+    Session* session = new Session(*this, poller, std::move(sock));
+    session->initialize();
+    return session;
+}
+
+void Server::_delete_session(Session* session)
+{
+    session->shutdown();
+    delete session;
 }
 
 } // namespace sockspp

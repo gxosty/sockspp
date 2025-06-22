@@ -6,6 +6,9 @@ project(${PROJECT_NAME})
 
 list(APPEND SOURCES
     src/sockspp/server/server.cxx
+    src/sockspp/server/client_socket.cxx
+    src/sockspp/server/remote_socket.cxx
+    src/sockspp/server/session.cxx
 )
 
 if(SOCKSPP_BUILD_SHARED)

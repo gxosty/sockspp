@@ -1,7 +1,11 @@
 #pragma once
 
 #include "server_params.hpp"
+#include "session.hpp"
+
+#include <sockspp/core/s5_enums.hpp>
 #include <sockspp/core/socket.hpp>
+#include <sockspp/core/poller/Poller.hpp>
 
 namespace sockspp
 {
@@ -16,8 +20,17 @@ public:
     void stop();
     bool is_serving() const;
 
+    AuthMethod get_auth_method() const;
+
+    bool authenticate(
+        const std::string& username,
+        const std::string& password
+    ) const;
+
 private:
-    void _accept_new_client();
+    Socket _accept_client();
+    Session* _create_new_session(Poller& poller, Socket&& sock);
+    void _delete_session(Session* session);
 
 private:
     ServerParams _params;

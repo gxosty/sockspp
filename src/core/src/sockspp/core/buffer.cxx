@@ -1,3 +1,4 @@
+#include "sockspp/core/memory_buffer.hpp"
 #include <sockspp/core/buffer.hpp>
 #include <sockspp/core/exceptions.hpp>
 
@@ -6,22 +7,22 @@
 namespace sockspp
 {
 
-Buffer::Buffer(size_t capacity) : _size{0}
+Buffer::Buffer(size_t capacity)
 {
-    _data = malloc(capacity);
+    _ptr = malloc(capacity);
 
-    if (!_data)
+    if (!_ptr)
     {
         throw MemoryAllocationException(capacity);
     }
 
-    *(char*)_data = 0;
+    *(char*)_ptr = 0;
     _capacity = capacity;
 }
 
 Buffer::~Buffer()
 {
-    free(_data);
+    free(_ptr);
 }
 
 } // namespace sockspp
