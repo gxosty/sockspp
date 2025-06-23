@@ -1,5 +1,6 @@
 #include "client_socket.hpp"
 #include "session.hpp"
+#include <sockspp/core/s5.hpp>
 #include <sockspp/core/exceptions.hpp>
 #include <sockspp/core/log.hpp>
 
@@ -57,6 +58,23 @@ bool ClientSocket::send_auth_status(uint8_t status)
     data[1] = status;
 
     return get_socket().send(reinterpret_cast<const char*>(data), 2) != -1;
+}
+
+bool ClientSocket::send_reply(
+    Reply reply,
+    AddrType addr_type,
+    uint8_t* bind_addr,
+    uint16_t bind_port
+) {
+    uint8_t data[262];
+    S5ReplyMessage message(data);
+    message.set_version(5);
+    message.set_reply(reply);
+    S5Address address = message.get_address();
+    address.set_type(addr_type);
+    address.set_address(bind_addr);
+    address.set_port(bind_port);
+    return get_socket().send(reinterpret_cast<const char*>(data), message.get_size());
 }
 
 } // namespace sockspp

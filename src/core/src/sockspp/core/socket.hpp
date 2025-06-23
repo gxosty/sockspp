@@ -21,10 +21,15 @@ public:
     ~Socket();
 
     static Socket open_tcp();
+    static Socket open_tcp6();
+    static Socket open_udp();
+    static Socket open_udp6();
 
     bool set_blocking(bool enabled);
+    bool set_nodelay(bool enabled);
 
     void connect(const std::string& ip, uint16_t port);
+    int connect(void* sock_addr, size_t sock_addr_len);
     void bind(const std::string& ip, uint16_t port);
     void listen(int count);
     Socket accept(SocketInfo* info = nullptr);

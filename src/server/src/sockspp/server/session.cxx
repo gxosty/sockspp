@@ -2,7 +2,6 @@
 #include "server.hpp"
 #include "sockspp/core/s5.hpp"
 
-#include <cstdint>
 #include <sockspp/core/s5.hpp>
 #include <sockspp/core/memory_buffer.hpp>
 #include <sockspp/core/poller/event.hpp>
@@ -34,6 +33,7 @@ void Session::initialize()
 {
     _client_socket->set_session(*this);
     _client_socket->get_socket().set_blocking(false);
+    _client_socket->get_socket().set_nodelay(true);
 
     Event client_event(
         _client_socket->get_socket().get_fd(),
@@ -219,25 +219,52 @@ bool Session::_handle_auth(MemoryBuffer& buffer)
     return true;
 }
 
-bool Session::_handle_command(MemoryBuffer& buffer)
-{
+bool Session::_handle_command(
+    MemoryBuffer& buffer,
+    const std::vector<IPAddress>* resolved_addresses
+) {
     uint8_t* data = buffer.as<uint8_t*>();
-    CommandMessage message(data);
+    S5CommandMessage message(data);
+    S5Address address = message.get_address();
 
     Command command = message.get_command();
+    _command = command;
+    Reply reply = Reply::Invalid;
 
     switch (command)
     {
     case Command::Connect:
         break;
-    case Command::Bind:
-        break;
     case Command::UdpAssociate:
-        break;
+    case Command::Bind:
     default:
-        LOGE("Invalid command");
+        LOGE("Unsupported command");
+        reply = Reply::CommandNotSupported;
+    }
+
+    if (reply != Reply::Invalid)
+    {
+        _client_socket->send_reply(
+            reply,
+            address.get_type(),
+            address.get_address(),
+            address.get_port()
+        );
+
         return false;
     }
+
+    return true;
+}
+
+bool Session::_connect_remote(
+    Socket&& sock,
+    const std::vector<IPAddress>* addresses
+) {
+    sock.set_blocking(false);
+    sock.set_nodelay(true);
+
+    _remote_socket = new RemoteSocket(std::move(sock));
 
     return false;
 }

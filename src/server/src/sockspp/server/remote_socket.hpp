@@ -14,7 +14,6 @@ class RemoteSocket : public SessionSocket
 public:
     RemoteSocket(Socket&& sock);
     bool process() override;
-
 }; // class RemoteSocket
 
 } // namespace sockspp

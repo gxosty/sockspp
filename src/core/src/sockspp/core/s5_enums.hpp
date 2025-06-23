@@ -29,7 +29,7 @@ namespace sockspp
 
     enum class Reply : uint8_t
     {
-        Succeed = 0x00,
+        Success = 0x00,
         GeneralFailure = 0x01,
         NotAllowed = 0x02,
         Unreachable = 0x03,

@@ -5,7 +5,10 @@
 
 #include <sockspp/core/poller/poller.hpp>
 #include <sockspp/core/socket.hpp>
+#include <sockspp/core/ip_address.hpp>
 #include <sockspp/core/s5_enums.hpp>
+
+#include <vector>
 
 namespace sockspp
 {
@@ -20,6 +23,7 @@ public:
         Accepted,
         AuthRequested,
         Authenticated,
+        ResolvingDomainName,
         ConnectingRemote,
         Connected,
         Invalid
@@ -45,7 +49,16 @@ private:
     bool _check_version(MemoryBuffer& buffer);
     bool _request_auth(MemoryBuffer& buffer);
     bool _handle_auth(MemoryBuffer& buffer);
-    bool _handle_command(MemoryBuffer& buffer);
+
+    bool _handle_command(
+        MemoryBuffer& buffer,
+        const std::vector<IPAddress>* addresses = nullptr
+    );
+
+    bool _connect_remote(
+        Socket&& sock,
+        const std::vector<IPAddress>* addresses
+    );
 
 private:
     const Server& _server;

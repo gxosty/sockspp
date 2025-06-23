@@ -65,6 +65,21 @@ Socket Socket::open_tcp()
     return Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 }
 
+Socket Socket::open_tcp6()
+{
+    return Socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+}
+
+Socket Socket::open_udp()
+{
+    return Socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+}
+
+Socket Socket::open_udp6()
+{
+    return Socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+}
+
 bool Socket::set_blocking(bool enabled)
 {
 #if (_WIN32)
@@ -89,6 +104,18 @@ bool Socket::set_blocking(bool enabled)
 #endif
 }
 
+bool Socket::set_nodelay(bool enabled)
+{
+    int state = enabled ? 1 : 0;
+    return 0 == setsockopt(
+        _fd,
+        IPPROTO_TCP,
+        TCP_NODELAY,
+        reinterpret_cast<const char*>(&state),
+        sizeof(state)
+    );
+}
+
 void Socket::connect(const std::string& ip, uint16_t port)
 {
     sockaddr_storage addr;
@@ -99,6 +126,11 @@ void Socket::connect(const std::string& ip, uint16_t port)
     {
         throw SocketConnectionException();
     }
+}
+
+int Socket::connect(void* sock_addr, size_t sock_addr_len)
+{
+    return ::connect(_fd, (sockaddr*)sock_addr, sock_addr_len);
 }
 
 void Socket::bind(const std::string& ip, uint16_t port)
