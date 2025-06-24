@@ -8,10 +8,20 @@ namespace sockspp
 {
 
 ClientSocket::ClientSocket(Socket&& sock)
-    : SessionSocket(std::move(sock)) {}
-
-bool ClientSocket::process()
+    : SessionSocket(std::move(sock))
 {
+    Socket& _sock = this->get_socket();
+    _sock.set_blocking(false);
+    _sock.set_nodelay(true);
+}
+
+bool ClientSocket::process_event(Event::Flags event_flags)
+{
+    if (event_flags & (Event::Closed | Event::Error))
+    {
+        return false;
+    }
+
     uint8_t _buffer[4096];
     MemoryBuffer buffer(
         reinterpret_cast<void*>(_buffer),
@@ -19,27 +29,19 @@ bool ClientSocket::process()
         4096
     );
 
-    Socket& socket = this->get_socket();
-    bool status = false;
+    int status = this->recv(buffer);
 
-    try {
-        socket.recv(buffer);
-        status = buffer.get_size() > 0;
-    } catch (const IOException& ex) {
-        LOGE("%s", ex.what());
-    }
-
-#if !SOCKSPP_DISABLE_LOGS
-    if (buffer.get_size() == 0)
-        LOGI("Client closed connection");
-#endif
-
-    if (status)
+    if (status == 0)
     {
-        return get_session().process_client(buffer);
+        return false;
+    }
+    else if (status == -1)
+    {
+        LOGE("Client error: %d", sockerrno);
+        return false;
     }
 
-    return false;
+    return this->get_session().process_client(buffer);
 }
 
 bool ClientSocket::send_auth(AuthMethod method)

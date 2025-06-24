@@ -116,7 +116,7 @@ void Server::serve()
                 SessionSocket* session_socket = \
                     reinterpret_cast<SessionSocket*>(event.get_ptr());
 
-                if ((flags & Event::Closed) || !session_socket->process())
+                if (!session_socket->process_event(flags))
                 {
                     Session* session = &session_socket->get_session();
                     _delete_session(session);

@@ -5,6 +5,7 @@
     #define SOCKSPP_POLLIN EPOLLIN
     #define SOCKSPP_POLLOUT EPOLLOUT
     #define SOCKSPP_POLLHUP EPOLLHUP
+    #define SOCKSPP_POLLERR EPOLLERR
 #endif
 
 namespace sockspp
@@ -17,7 +18,8 @@ public:
     {
         Read = SOCKSPP_POLLIN,
         Write = SOCKSPP_POLLOUT,
-        Closed = SOCKSPP_POLLHUP
+        Closed = SOCKSPP_POLLHUP,
+        Error = SOCKSPP_POLLERR
     }; // enum class Flags
 
 public:

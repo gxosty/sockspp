@@ -34,7 +34,24 @@ public:
         _sock.close();
     }
 
-    virtual bool process() = 0;
+    virtual bool process_event(Event::Flags event_flags) = 0;
+
+    // so that you can add some vpn functionality
+    virtual int recv(MemoryBuffer& buffer)
+    {
+        Socket& sock = this->get_socket();
+        
+        int size = sock.recv(buffer.as<char*>(), buffer.get_capacity(), 0);
+        buffer.set_size(size > 0 ? size : 0);
+
+        return size;
+    }
+
+    virtual int send(MemoryBuffer& buffer)
+    {
+        Socket& sock = this->get_socket();
+        return sock.send(buffer.as<char*>(), buffer.get_size(), 0);
+    }
 
     inline Session& get_session() const
     {

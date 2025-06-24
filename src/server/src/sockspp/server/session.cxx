@@ -32,8 +32,6 @@ Session::~Session()
 void Session::initialize()
 {
     _client_socket->set_session(*this);
-    _client_socket->get_socket().set_blocking(false);
-    _client_socket->get_socket().set_nodelay(true);
 
     Event client_event(
         _client_socket->get_socket().get_fd(),
@@ -44,15 +42,13 @@ void Session::initialize()
     _poller.register_event(client_event);
 
     _state = Session::State::Accepted;
-
-    LOGD("Session initialized");
 }
 
 void Session::shutdown()
 {
     Event client_event(
         _client_socket->get_socket().get_fd(),
-        Event::Read,
+        static_cast<Event::Flags>(Event::Read | Event::Closed),
         nullptr
     );
 
@@ -62,9 +58,15 @@ void Session::shutdown()
 
     if (_remote_socket)
     {
+        Event::Flags flags = static_cast<Event::Flags>(Event::Closed | (
+            _state == Session::State::ConnectingRemote
+            ? Event::Write
+            : Event::Read
+        ));
+
         Event remote_event(
             _remote_socket->get_socket().get_fd(),
-            Event::Read,
+            flags,
             nullptr
         );
 
@@ -85,8 +87,6 @@ void Session::shutdown()
     //     _udp_socket->get_socket().shutdown();
     //     _udp_socket->get_socket().close();
     // }
-    
-    LOGD("Session shutdown");
 }
 
 bool Session::process_client(MemoryBuffer& buffer)
@@ -98,7 +98,23 @@ bool Session::process_client(MemoryBuffer& buffer)
     case Session::State::AuthRequested:
         return _handle_auth(buffer);
     case Session::State::Authenticated:
-        return _handle_command(buffer);
+        {
+            if (!_check_command(buffer))
+                return false;
+
+            bool is_domain_name = false;
+            std::vector<IPAddress>* addresses = _resolve_address(buffer, &is_domain_name);
+
+            if (is_domain_name)
+                return true;
+
+            if (!addresses)
+                return false;
+
+            return _do_command(addresses);
+        }
+    case Session::State::Connected:
+        return _remote_socket->send(buffer);
     default:
         break;
     }
@@ -107,8 +123,37 @@ bool Session::process_client(MemoryBuffer& buffer)
     return false;
 }
 
+bool Session::reply_remote_connection(
+    Reply reply,
+    AddrType addr_type,
+    uint8_t* address,
+    uint16_t port
+) {
+    if (_state != Session::State::ConnectingRemote)
+    {
+        LOGE("Remote connected in wrong session state");
+        return false;
+    }
+        
+    if (reply == Reply::Success)
+    {
+        _remote_connected();
+    }
+
+    return _client_socket->send_reply(reply, addr_type, address, port)
+        && (reply == Reply::Success);
+}
+
 bool Session::process_remote(MemoryBuffer& buffer)
 {
+    switch (_state)
+    {
+    case Session::State::Connected:
+        return _client_socket->send(buffer);
+    default:
+        break;
+    }
+
     return false;
 }
 
@@ -148,15 +193,13 @@ bool Session::_request_auth(MemoryBuffer& buffer)
         }
     }
 
-    if (selected_method != auth_method)
+    if (!_client_socket->send_auth(selected_method))
     {
-        LOGI("Invalid client authentication method");
         return false;
     }
 
-    if (!_client_socket->send_auth(selected_method))
+    if (selected_method != auth_method)
     {
-        LOGE("Error occured when sending auth method");
         return false;
     }
 
@@ -209,49 +252,105 @@ bool Session::_handle_auth(MemoryBuffer& buffer)
     if (!_server.authenticate(username, password))
     {
         _client_socket->send_auth_status(0xFF);
-        LOGI("Wrong client username or password");
         return false;
     }
 
     _client_socket->send_auth_status(0x00);
     _set_state(Session::State::Authenticated);
-    LOGI("Client authentication succeeded");
     return true;
 }
 
-bool Session::_handle_command(
-    MemoryBuffer& buffer,
-    const std::vector<IPAddress>* resolved_addresses
-) {
-    uint8_t* data = buffer.as<uint8_t*>();
-    S5CommandMessage message(data);
-    S5Address address = message.get_address();
-
+bool Session::_check_command(MemoryBuffer& buffer)
+{
+    S5CommandMessage message(buffer.as<uint8_t*>());
     Command command = message.get_command();
     _command = command;
-    Reply reply = Reply::Invalid;
 
     switch (command)
     {
     case Command::Connect:
         break;
+    case Command::Bind:
+    case Command::UdpAssociate:
+    default:
+        LOGW("Unsupported command: %d", command);
+        {
+            S5Address address = message.get_address();
+            _client_socket->send_reply(
+                Reply::CommandNotSupported,
+                address.get_type(),
+                address.get_address(),
+                address.get_port()
+            );
+        }
+        return false;
+    }
+
+    return true;
+}
+
+std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is_domain_name)
+{
+    S5CommandMessage message(buffer.as<uint8_t*>());
+    S5Address address = message.get_address();
+    *is_domain_name = false;
+    AddrType type = address.get_type();
+
+    switch (type)
+    {
+    case AddrType::IPv4:
+    case AddrType::IPv6:
+        {
+            std::vector<IPAddress>* addresses = new std::vector<IPAddress>();
+
+            addresses->emplace_back(
+                type == AddrType::IPv4
+                ? IPAddress::Version::IPv4
+                : IPAddress::Version::IPv6,
+                address.get_address(),
+                address.get_port(),
+                false
+            );
+
+            return addresses;
+        }
+    case AddrType::DomainName:
+        // *is_domain_name = true;
+    default:
+        LOGW("Unsupported address type: %d", type);
+        {
+            _client_socket->send_reply(
+                Reply::AddrTypeNotSupported,
+                type,
+                address.get_address(),
+                address.get_port()
+            );
+        }
+        break;
+    }
+
+    return nullptr;
+}
+
+bool Session::_do_command(
+    const std::vector<IPAddress>* addresses
+) {
+    switch (_command)
+    {
+    case Command::Connect:
+        {
+            Socket sock = \
+                addresses->at(0).get_version() == IPAddress::Version::IPv4
+                ? Socket::open_tcp()
+                : Socket::open_tcp6();
+
+            _connect_remote(std::move(sock), addresses);
+        }
+        break;
     case Command::UdpAssociate:
     case Command::Bind:
     default:
-        LOGE("Unsupported command");
-        reply = Reply::CommandNotSupported;
-    }
-
-    if (reply != Reply::Invalid)
-    {
-        _client_socket->send_reply(
-            reply,
-            address.get_type(),
-            address.get_address(),
-            address.get_port()
-        );
-
-        return false;
+        break;
     }
 
     return true;
@@ -261,12 +360,35 @@ bool Session::_connect_remote(
     Socket&& sock,
     const std::vector<IPAddress>* addresses
 ) {
-    sock.set_blocking(false);
-    sock.set_nodelay(true);
+    _remote_socket = new RemoteSocket(std::move(sock), addresses);
+    _remote_socket->set_session(*this);
+    if (!_remote_socket->process_event(Event::Error))  // start connect attempts
+    {
+        return false;
+    }
+    
+    Event remote_event(
+        _remote_socket->get_socket().get_fd(),
+        static_cast<Event::Flags>(Event::Write | Event::Closed),
+        _remote_socket
+    );
 
-    _remote_socket = new RemoteSocket(std::move(sock));
+    _poller.register_event(remote_event);
 
-    return false;
+    _set_state(Session::State::ConnectingRemote);
+    return true;
+}
+
+void Session::_remote_connected()
+{
+    Event remote_event(
+        _remote_socket->get_socket().get_fd(),
+        static_cast<Event::Flags>(Event::Read | Event::Closed),
+        _remote_socket
+    );
+
+    _poller.update_event(remote_event);
+    _set_state(Session::State::Connected);
 }
 
 } // namespace sockspp

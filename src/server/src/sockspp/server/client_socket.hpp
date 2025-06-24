@@ -10,7 +10,7 @@ class ClientSocket : public SessionSocket
 {
 public:
     ClientSocket(Socket&& sock);
-    bool process() override;
+    bool process_event(Event::Flags event_flags) override;
 
     bool send_auth(AuthMethod method);
     bool send_auth_status(uint8_t status = 0x00);

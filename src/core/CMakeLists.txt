@@ -8,6 +8,7 @@ list(APPEND SOURCES
     src/sockspp/core/s5.cxx
     src/sockspp/core/buffer.cxx
     src/sockspp/core/socket.cxx
+    src/sockspp/core/ip_address.cxx
 )
 
 if(WIN32)
