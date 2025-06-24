@@ -30,7 +30,7 @@ inline LogLevel _loglevel = LogLevel::Off;
     char _time_buffer[24]; strftime(_time_buffer, 24, "%H:%M:%S", _current_time); \
     _SOCKSPP_IN_TTFL_LOG(_tag, _time_buffer, _filename, _line) \
     fprintf(stderr, __VA_ARGS__); \
-    fputs("", stderr); \
+    fputs("\n", stderr); \
 
 #define _SOCKSPP_LOG(_tag, _level, ...) \
 if (_level <= _loglevel) { \
