@@ -151,7 +151,7 @@ Socket Server::_accept_client()
 {
     SocketInfo client_info;
     Socket client = _server_socket.accept(&client_info);
-    LOGI("Accepted: %s", client_info.str().c_str());
+    LOGD("Accepted: %s", client_info.str().c_str());
     return client;
 }
 
