@@ -273,7 +273,7 @@ bool Session::_check_command(MemoryBuffer& buffer)
     case Command::Bind:
     case Command::UdpAssociate:
     default:
-        LOGW("Unsupported command: %d", command);
+        LOGW("Unsupported command: %d", static_cast<int>(command));
         {
             S5Address address = message.get_address();
             _client_socket->send_reply(
@@ -317,7 +317,7 @@ std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is
     case AddrType::DomainName:
         // *is_domain_name = true;
     default:
-        LOGW("Unsupported address type: %d", type);
+        LOGW("Unsupported address type: %d", static_cast<int>(type));
         {
             _client_socket->send_reply(
                 Reply::AddrTypeNotSupported,

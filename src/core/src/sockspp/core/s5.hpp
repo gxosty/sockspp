@@ -1,6 +1,7 @@
 #pragma once
 
 #include "s5_enums.hpp"
+#include <cstddef>
 #include <cstdint>
 
 namespace sockspp

@@ -5,5 +5,6 @@
     #define sockerrno WSAGetLastError()
 #else
     #include <errno.h>
+    #include <cstring>
     #define sockerrno errno
 #endif

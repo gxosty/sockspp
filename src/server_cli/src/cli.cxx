@@ -1,5 +1,5 @@
 #include "sockspp/core/exceptions.hpp"
-#include <cstdlib>
+
 #ifdef _WIN32
     #include <winsock2.h>
 #endif // _WIN32
@@ -13,6 +13,7 @@
 #include <csignal>
 #include <cstdint>
 #include <iostream>
+#include <cstdlib>
 
 namespace
 {
@@ -73,11 +74,13 @@ static inline sockspp::ServerParams parse_params(int argc, char* argv[])
         .default_value("")
         .nargs(1);
 
+#if !SOCKSPP_DISABLE_LOGS
     parser.add_argument("--log-level")
         .help("log/verbosity level")
         .default_value("off")
         .choices("off", "error", "warning", "info", "debug")
         .nargs(1);
+#endif
 
     try {
         parser.parse_args(argc, argv);
@@ -91,6 +94,8 @@ static inline sockspp::ServerParams parse_params(int argc, char* argv[])
     uint16_t listen_port = parser.get<int>("--listen-port");
     std::string username = parser.get<std::string>("--username");
     std::string password = parser.get<std::string>("--password");
+
+#if !SOCKSPP_DISABLE_LOGS
     std::string log_level_str = parser.get<std::string>("--log-level");
 
     LogLevel log_level = LogLevel::Off;
@@ -113,6 +118,7 @@ static inline sockspp::ServerParams parse_params(int argc, char* argv[])
     }
 
     SET_LOG_LEVEL(log_level);
+#endif
 
     return sockspp::ServerParams{
         .listen_ip = listen_ip,

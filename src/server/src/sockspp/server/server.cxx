@@ -82,8 +82,11 @@ void Server::serve()
 
         if (res == -1)
         {
-            LOGE("Poll error: %d", sockerrno);
-            this->stop();
+            if (sockerrno != EINTR)
+            {
+                LOGE("Poll error: %d", sockerrno);
+                this->stop();
+            }
             break;
         }
 

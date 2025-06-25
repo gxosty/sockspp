@@ -4,7 +4,6 @@
 
 #include <sockspp/core/errno.hpp>
 #include <sockspp/core/log.hpp>
-#include <winerror.h>
 
 #ifdef _WIN32
     #include <winsock2.h>

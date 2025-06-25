@@ -1,12 +1,15 @@
 #pragma once
 
-#if defined(_WIN32) || defined(__linux__)
+#if defined(_WIN32)
     #include <wepoll.h>
-    #define SOCKSPP_POLLIN EPOLLIN
-    #define SOCKSPP_POLLOUT EPOLLOUT
-    #define SOCKSPP_POLLHUP EPOLLHUP
-    #define SOCKSPP_POLLERR EPOLLERR
+#elif defined(__linux__)
+    #include <sys/epoll.h>
 #endif
+
+#define SOCKSPP_POLLIN EPOLLIN
+#define SOCKSPP_POLLOUT EPOLLOUT
+#define SOCKSPP_POLLHUP EPOLLHUP
+#define SOCKSPP_POLLERR EPOLLERR
 
 namespace sockspp
 {

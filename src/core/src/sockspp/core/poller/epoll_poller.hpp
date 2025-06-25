@@ -11,6 +11,7 @@
     #define SOCKSPP_INVALID_POLLER INVALID_HANDLE_VALUE
 #else
     #include <sys/epoll.h>
+    #include <unistd.h>
     typedef int epoll_handle_t;
     #define SOCKSPP_INVALID_POLLER -1
     #define epoll_close(fd) close(fd)
@@ -94,7 +95,7 @@ public:
             out_events.emplace_back(
                 0,  // I am shocked but that's literally how epoll works
                 static_cast<Event::Flags>(event.events),
-                event.data.ptr
+                reinterpret_cast<void*>(event.data.ptr)
             );
         }
         

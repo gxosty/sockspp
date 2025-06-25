@@ -1,6 +1,6 @@
 #include "ip_address.hpp"
 #include <stdexcept>
-#include <cstdlib>
+#include <cstring>
 
 #ifdef _WIN32
     #include <winsock2.h>
