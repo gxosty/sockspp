@@ -76,13 +76,7 @@ bool RemoteSocket::try_connect_next()
                 : sizeof(sockaddr_in6)
         );
 
-        if (res < 0
-#ifdef _WIN32
-            && (sockerrno != WSAEWOULDBLOCK)
-#else
-            && (sockerrno != EWOULDBLOCK)
-#endif // _WIN32
-        ) {
+        if (res < 0 && (sockerrno == EWOULDBLOCK)) {
             // TODO: Reply based on errno and fix reply address
             this->get_session().reply_remote_connection(
                 Reply::GeneralFailure,

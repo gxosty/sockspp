@@ -3,6 +3,7 @@
 #include "client_socket.hpp"
 #include "remote_socket.hpp"
 #include "sockspp/core/memory_buffer.hpp"
+#include "sockspp/core/buffer.hpp"
 
 #include <sockspp/core/poller/poller.hpp>
 #include <sockspp/core/socket.hpp>
@@ -56,6 +57,11 @@ private:
 
     bool _process_client(MemoryBuffer& buffer);
     bool _process_remote(MemoryBuffer& buffer);
+    bool _session_socket_send(
+        SessionSocket* session_socket,
+        MemoryBuffer* buffer,
+        MemoryBuffer& _scheduled
+    );
 
     bool _check_version(MemoryBuffer& buffer);
     bool _request_auth(MemoryBuffer& buffer);
@@ -72,10 +78,12 @@ private:
     void _remote_connected();
 
 private:
+    Buffer _client_buffer;
+    Buffer _remote_buffer;
     const Server& _server;
     Poller& _poller;
-    ClientSocket* _client_socket = nullptr;
-    RemoteSocket* _remote_socket = nullptr;
+    ClientSocket* _client_socket;
+    RemoteSocket* _remote_socket;
     // UDPSocket _udp_socket;
     
     State _state = State::Invalid;

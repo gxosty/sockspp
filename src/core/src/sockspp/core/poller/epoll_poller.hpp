@@ -74,12 +74,27 @@ public:
 
     bool remove_event(const Event& event)
     {
-        if (epoll_ctl(_fd, EPOLL_CTL_DEL, event.get_fd(), nullptr))
-        {
-            return false;
-        }
+        return epoll_ctl(_fd, EPOLL_CTL_DEL, event.get_fd(), nullptr);
+    }
 
-        return true;
+    // shortcuts
+    bool remove_event(int fd)
+    {
+        return epoll_ctl(_fd, EPOLL_CTL_DEL, fd, nullptr);
+    }
+
+    inline bool set_event(int fd, void* ptr, Event::Flags flags, bool is_mod = false)
+    {
+        epoll_event ev;
+        ev.events = flags;
+        ev.data.ptr = ptr;
+
+        return epoll_ctl(
+            _fd,
+            is_mod ? EPOLL_CTL_MOD : EPOLL_CTL_ADD,
+            fd,
+            &ev
+        );
     }
 
     int poll(std::vector<Event>& out_events, int timeout)

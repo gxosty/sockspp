@@ -1,14 +1,15 @@
 #include "server.hpp"
 #include "session.hpp"
 #include "session_socket.hpp"
-#include "sockspp/core/s5_enums.hpp"
+#include "defs.hpp"
+
+#include <sockspp/core/s5_enums.hpp>
 #include <sockspp/core/poller/poller.hpp>
 #include <sockspp/core/poller/event.hpp>
 #include <sockspp/core/log.hpp>
 
 #include <vector>
 
-#define SOCKSPP_SERVER_LISTEN 128
 #if defined(_WIN32)
     #define SOCKSPP_POLL_TIMEOUT 2000
 #else
@@ -69,15 +70,14 @@ void Server::serve()
     }
 
     std::vector<Event> events;
-    events.reserve(64);
+    events.reserve(SOCKSPP_SERVER_INITIAL_POLL_RESULT_SIZE);
 
     while (this->is_serving())
     {
         events.clear();
 
-        // IDK why but wepoll does react to incoming clients when
-        // timeout is set to -1. For now doing some workaround
-        // until I find a better solution
+        // workaround for Window because it does not trigger EINTR
+        // that's why setting timeout to -1 is not preferred there
         int res = poller.poll(events, SOCKSPP_POLL_TIMEOUT);
 
         if (res == -1)

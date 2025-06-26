@@ -1,8 +1,10 @@
 #include "session.hpp"
 #include "server.hpp"
-#include "sockspp/core/s5.hpp"
+#include "defs.hpp"
 
+#include <cerrno>
 #include <sockspp/core/s5.hpp>
+#include <sockspp/core/errno.hpp>
 #include <sockspp/core/memory_buffer.hpp>
 #include <sockspp/core/poller/event.hpp>
 #include <sockspp/core/log.hpp>
@@ -16,7 +18,10 @@ Session::Session(
     Socket&& sock
 )   : _server(server)
     , _poller(poller)
-    , _client_socket(new ClientSocket(std::move(sock))) {}
+    , _client_socket(new ClientSocket(std::move(sock)))
+    , _remote_socket(nullptr)
+    , _client_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE)
+    , _remote_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE) {}
 
 Session::~Session()
 {
@@ -33,57 +38,31 @@ void Session::initialize()
 {
     _client_socket->set_session(*this);
 
-    Event client_event(
+    _poller.set_event(
         _client_socket->get_socket().get_fd(),
-        static_cast<Event::Flags>(Event::Read | Event::Closed),
-        _client_socket
+        _client_socket,
+        static_cast<Event::Flags>(Event::Read | Event::Closed)
     );
-
-    _poller.register_event(client_event);
 
     _state = Session::State::Accepted;
 }
 
 void Session::shutdown()
 {
-    Event client_event(
-        _client_socket->get_socket().get_fd(),
-        static_cast<Event::Flags>(Event::Read | Event::Closed),
-        nullptr
-    );
-
-    _poller.remove_event(client_event);
+    _poller.remove_event(_client_socket->get_socket().get_fd());
     _client_socket->get_socket().shutdown();
     _client_socket->get_socket().close();
 
     if (_remote_socket)
     {
-        Event::Flags flags = static_cast<Event::Flags>(Event::Closed | (
-            _state == Session::State::ConnectingRemote
-            ? Event::Write
-            : Event::Read
-        ));
-
-        Event remote_event(
-            _remote_socket->get_socket().get_fd(),
-            flags,
-            nullptr
-        );
-
-        _poller.remove_event(remote_event);
+        _poller.remove_event(_remote_socket->get_socket().get_fd());
         _remote_socket->get_socket().shutdown();
         _remote_socket->get_socket().close();
     }
 
     // if (_udp_socket)
     // {
-    //     Event udp_event(
-    //         _udp_socket->get_socket().get_fd(),
-    //         Event::Read,
-    //         nullptr
-    //     );
-    //
-    //     _poller.remove_event(udp_event);
+    //     _poller.remove_event(_udp_socket->get_socket().get_fd());
     //     _udp_socket->get_socket().shutdown();
     //     _udp_socket->get_socket().close();
     // }
@@ -96,11 +75,16 @@ bool Session::process_client_event(Event::Flags event_flags)
         return false;
     }
 
-    uint8_t _buffer[4096];
+    if (event_flags & Event::Write)
+    {
+        return _session_socket_send(_client_socket, nullptr, _client_buffer);
+    }
+
+    uint8_t _buffer[SOCKSPP_SESSION_SOCKET_BUFFER_SIZE];
     MemoryBuffer buffer(
         reinterpret_cast<void*>(_buffer),
         0,
-        4096
+        SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
     );
 
     int status = _client_socket->recv(buffer);
@@ -142,13 +126,15 @@ bool Session::process_remote_event(Event::Flags event_flags)
     {
         if (!remote_socket->is_connected())
             return remote_socket->could_connect();
+
+        return _session_socket_send(_remote_socket, nullptr, _remote_buffer);
     }
 
-    uint8_t _buffer[4096];
+    uint8_t _buffer[SOCKSPP_SESSION_SOCKET_BUFFER_SIZE];
     MemoryBuffer buffer(
         reinterpret_cast<void*>(_buffer),
         0,
-        4096
+        SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
     );
 
     int status = remote_socket->recv(buffer);
@@ -163,6 +149,27 @@ bool Session::process_remote_event(Event::Flags event_flags)
     }
 
     return _process_remote(buffer);
+}
+
+bool Session::reply_remote_connection(
+    Reply reply,
+    AddrType addr_type,
+    uint8_t* address,
+    uint16_t port
+) {
+    if (_state != Session::State::ConnectingRemote)
+    {
+        LOGE("Remote connected in wrong session state");
+        return false;
+    }
+        
+    if (reply == Reply::Success)
+    {
+        _remote_connected();
+    }
+
+    return _client_socket->send_reply(reply, addr_type, address, port)
+        && (reply == Reply::Success);
 }
 
 bool Session::_process_client(MemoryBuffer& buffer)
@@ -190,7 +197,7 @@ bool Session::_process_client(MemoryBuffer& buffer)
             return _do_command(addresses);
         }
     case Session::State::Connected:
-        return _remote_socket->send(buffer);
+        return _session_socket_send(_remote_socket, &buffer, _remote_buffer);
     default:
         break;
     }
@@ -199,38 +206,69 @@ bool Session::_process_client(MemoryBuffer& buffer)
     return false;
 }
 
-bool Session::reply_remote_connection(
-    Reply reply,
-    AddrType addr_type,
-    uint8_t* address,
-    uint16_t port
-) {
-    if (_state != Session::State::ConnectingRemote)
-    {
-        LOGE("Remote connected in wrong session state");
-        return false;
-    }
-        
-    if (reply == Reply::Success)
-    {
-        _remote_connected();
-    }
-
-    return _client_socket->send_reply(reply, addr_type, address, port)
-        && (reply == Reply::Success);
-}
-
 bool Session::_process_remote(MemoryBuffer& buffer)
 {
     switch (_state)
     {
     case Session::State::Connected:
-        return _client_socket->send(buffer);
+        return _session_socket_send(_client_socket, &buffer, _client_buffer);
     default:
         break;
     }
 
     return false;
+}
+
+bool Session::_session_socket_send(
+    SessionSocket* session_socket,
+    MemoryBuffer* buffer,
+    MemoryBuffer& scheduled
+) {
+    bool is_scheduled = scheduled.get_size() > 0;
+    MemoryBuffer& send_buffer = is_scheduled ? scheduled : *buffer;
+    int res = session_socket->send(send_buffer);
+
+    if (res != send_buffer.get_size())
+    {
+        if (
+            (res == -1)
+            && (sockerrno != EWOULDBLOCK)
+            && (sockerrno != EAGAIN)
+        ) {
+            return false;
+        }
+
+        if (!is_scheduled || (res != -1))
+        {
+            size_t sent = res == -1 ? 0 : res;
+            size_t copy_size = send_buffer.get_size() - sent;
+            scheduled.copy_from(buffer->as<uint8_t*>() + sent, copy_size);
+        }
+
+        if (!is_scheduled)
+        {
+            _poller.set_event(
+                session_socket->get_socket().get_fd(),
+                session_socket,
+                static_cast<Event::Flags>(Event::Write | Event::Closed),
+                true
+            );
+        }
+    }
+    else if (is_scheduled)
+    {
+        scheduled.set_size(0);
+
+        _poller.set_event(
+            session_socket->get_socket().get_fd(),
+            session_socket,
+            static_cast<Event::Flags>(Event::Read | Event::Closed),
+            true
+        );
+    }
+
+    return true;
+
 }
 
 void Session::_set_state(Session::State state)
@@ -443,13 +481,11 @@ bool Session::_connect_remote(
         return false;
     }
     
-    Event remote_event(
+    _poller.set_event(
         _remote_socket->get_socket().get_fd(),
-        static_cast<Event::Flags>(Event::Write | Event::Closed),
-        _remote_socket
+        _remote_socket,
+        static_cast<Event::Flags>(Event::Write | Event::Closed)
     );
-
-    _poller.register_event(remote_event);
 
     _set_state(Session::State::ConnectingRemote);
     return true;
@@ -457,13 +493,12 @@ bool Session::_connect_remote(
 
 void Session::_remote_connected()
 {
-    Event remote_event(
+    _poller.set_event(
         _remote_socket->get_socket().get_fd(),
+        _remote_socket,
         static_cast<Event::Flags>(Event::Read | Event::Closed),
-        _remote_socket
+        true
     );
-
-    _poller.update_event(remote_event);
     _set_state(Session::State::Connected);
 }
 

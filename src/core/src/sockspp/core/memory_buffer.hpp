@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace sockspp
 {
@@ -9,7 +10,9 @@ namespace sockspp
 class MemoryBuffer
 {
 public:
-    MemoryBuffer() = default;  // Just so you can extend the functionality
+    MemoryBuffer()
+        : _ptr(nullptr), _size(0), _capacity(0) {}
+
     MemoryBuffer(void* ptr, size_t size, size_t capacity)
         : _ptr(ptr), _size(size), _capacity(capacity) {}
 
@@ -27,6 +30,30 @@ public:
     inline uint8_t& operator[](size_t idx) const
     {
         return reinterpret_cast<uint8_t*>(_ptr)[idx];
+    }
+
+    inline size_t copy_from(void* ptr, size_t size)
+    {
+        size_t copy_size = _capacity > size
+            ? size
+            : _capacity;
+
+        memcpy(_ptr, ptr, copy_size);
+        _size = copy_size;
+
+        return copy_size;
+    }
+
+    inline size_t copy_from(MemoryBuffer& other)
+    {
+        size_t copy_size = _capacity > other.get_size()
+            ? other.get_size()
+            : _capacity;
+
+        memcpy(_ptr, other.get_ptr(), copy_size);
+        _size = copy_size;
+
+        return copy_size;
     }
 
     inline uint8_t& operator+(size_t idx) const
