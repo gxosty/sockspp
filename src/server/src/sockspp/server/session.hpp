@@ -41,8 +41,9 @@ public:
     void initialize();
     void shutdown();
 
-    bool process_client(MemoryBuffer& buffer);
-    bool process_remote(MemoryBuffer& buffer);
+    bool process_client_event(Event::Flags event_flags);
+    bool process_remote_event(Event::Flags event_flags);
+
     bool reply_remote_connection(
         Reply reply,
         AddrType addr_type,
@@ -52,6 +53,9 @@ public:
 
 private:
     void _set_state(State state);
+
+    bool _process_client(MemoryBuffer& buffer);
+    bool _process_remote(MemoryBuffer& buffer);
 
     bool _check_version(MemoryBuffer& buffer);
     bool _request_auth(MemoryBuffer& buffer);

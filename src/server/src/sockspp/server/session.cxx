@@ -89,7 +89,83 @@ void Session::shutdown()
     // }
 }
 
-bool Session::process_client(MemoryBuffer& buffer)
+bool Session::process_client_event(Event::Flags event_flags)
+{
+    if (event_flags & (Event::Closed | Event::Error))
+    {
+        return false;
+    }
+
+    uint8_t _buffer[4096];
+    MemoryBuffer buffer(
+        reinterpret_cast<void*>(_buffer),
+        0,
+        4096
+    );
+
+    int status = _client_socket->recv(buffer);
+
+    if (status == 0)
+    {
+        return false;
+    }
+    else if (status == -1)
+    {
+        LOGE("Client error: %d", sockerrno);
+        return false;
+    }
+
+    return _process_client(buffer);
+}
+
+bool Session::process_remote_event(Event::Flags event_flags)
+{
+    if (event_flags & Event::Closed)
+    {
+        return false;
+    }
+
+    RemoteSocket* remote_socket =
+        reinterpret_cast<RemoteSocket*>(_remote_socket);
+
+    if (event_flags & Event::Error)
+    {
+        if (!remote_socket->is_connected())
+        {
+            return remote_socket->try_connect_next();
+        }
+
+        return false;
+    }
+
+    if (event_flags & Event::Write)
+    {
+        if (!remote_socket->is_connected())
+            return remote_socket->could_connect();
+    }
+
+    uint8_t _buffer[4096];
+    MemoryBuffer buffer(
+        reinterpret_cast<void*>(_buffer),
+        0,
+        4096
+    );
+
+    int status = remote_socket->recv(buffer);
+
+    if (status == 0)
+    {
+        return false;
+    }
+    else if (status == -1)
+    {
+        return false;
+    }
+
+    return _process_remote(buffer);
+}
+
+bool Session::_process_client(MemoryBuffer& buffer)
 {
     switch (_state)
     {
@@ -144,7 +220,7 @@ bool Session::reply_remote_connection(
         && (reply == Reply::Success);
 }
 
-bool Session::process_remote(MemoryBuffer& buffer)
+bool Session::_process_remote(MemoryBuffer& buffer)
 {
     switch (_state)
     {

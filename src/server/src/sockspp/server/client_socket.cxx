@@ -17,31 +17,7 @@ ClientSocket::ClientSocket(Socket&& sock)
 
 bool ClientSocket::process_event(Event::Flags event_flags)
 {
-    if (event_flags & (Event::Closed | Event::Error))
-    {
-        return false;
-    }
-
-    uint8_t _buffer[4096];
-    MemoryBuffer buffer(
-        reinterpret_cast<void*>(_buffer),
-        0,
-        4096
-    );
-
-    int status = this->recv(buffer);
-
-    if (status == 0)
-    {
-        return false;
-    }
-    else if (status == -1)
-    {
-        LOGE("Client error: %d", sockerrno);
-        return false;
-    }
-
-    return this->get_session().process_client(buffer);
+    return this->get_session().process_client_event(event_flags);
 }
 
 bool ClientSocket::send_auth(AuthMethod method)

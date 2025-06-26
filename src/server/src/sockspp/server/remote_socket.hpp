@@ -22,10 +22,9 @@ public:
     );
 
     bool process_event(Event::Flags event_flags) override;
-
-private:
-    bool _try_connect_next();
-    bool _could_connect();
+    bool is_connected() const;
+    bool try_connect_next();
+    bool could_connect();
 
 private:
     const std::vector<IPAddress>* _addresses;

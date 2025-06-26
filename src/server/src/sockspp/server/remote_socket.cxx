@@ -31,48 +31,15 @@ RemoteSocket::RemoteSocket(
 
 bool RemoteSocket::process_event(Event::Flags event_flags)
 {
-    if (event_flags & Event::Closed)
-    {
-        return false;
-    }
-
-    if (event_flags & Event::Error)
-    {
-        if (!_connected)
-        {
-            return _try_connect_next();
-        }
-
-        return false;
-    }
-
-    if (event_flags & Event::Write)
-    {
-        return _could_connect();
-    }
-
-    uint8_t _buffer[4096];
-    MemoryBuffer buffer(
-        reinterpret_cast<void*>(_buffer),
-        0,
-        4096
-    );
-
-    int status = this->recv(buffer);
-
-    if (status == 0)
-    {
-        return false;
-    }
-    else if (status == -1)
-    {
-        return false;
-    }
-
-    return this->get_session().process_remote(buffer);
+    return this->get_session().process_remote_event(event_flags);
 }
 
-bool RemoteSocket::_try_connect_next()
+bool RemoteSocket::is_connected() const
+{
+    return _connected;
+}
+
+bool RemoteSocket::try_connect_next()
 {
     _connecting_idx++;
 
@@ -134,7 +101,7 @@ bool RemoteSocket::_try_connect_next()
     return false;
 }
 
-bool RemoteSocket::_could_connect()
+bool RemoteSocket::could_connect()
 {
     _connected = true;
     IPAddress connected_address = _addresses->at(_connecting_idx);
