@@ -35,7 +35,7 @@ size_t S5Address::get_size() const
         break;
     }
 
-    LOGD("Address type: %d", (int)type);
+    LOGE("S5Address type %d", (int)type);
 
     return 0;
 }
@@ -92,7 +92,7 @@ uint16_t S5Address::get_port() const
     return ntohs(*reinterpret_cast<uint16_t*>(port_ptr));
 }
 
-void S5Address::set_port(uint16_t port)
+void S5Address::set_port(uint16_t port, bool netport)
 {
     size_t size = this->get_size();
 
@@ -101,7 +101,7 @@ void S5Address::set_port(uint16_t port)
 
     uint8_t* port_ptr = (reinterpret_cast<uint8_t*>(_data) + size - 2);
 
-    *reinterpret_cast<uint16_t*>(port_ptr) = htons(port);
+    *reinterpret_cast<uint16_t*>(port_ptr) = netport ? port : htons(port);
 }
 
 S5R_Base::S5R_Base(void* data)

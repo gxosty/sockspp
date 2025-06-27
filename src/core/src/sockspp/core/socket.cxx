@@ -1,6 +1,8 @@
 #include "sockspp/core/memory_buffer.hpp"
+#include <cstdint>
 #include <sockspp/core/socket.hpp>
 #include <sockspp/core/exceptions.hpp>
+#include <stdexcept>
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -131,7 +133,7 @@ void Socket::connect(const std::string& ip, uint16_t port)
     }
 }
 
-int Socket::connect(void* sock_addr, size_t sock_addr_len)
+int Socket::connect(void* sock_addr, int sock_addr_len)
 {
     return ::connect(_fd, (sockaddr*)sock_addr, sock_addr_len);
 }
@@ -146,6 +148,11 @@ void Socket::bind(const std::string& ip, uint16_t port)
     {
         throw SocketBindException();
     }
+}
+
+int Socket::bind(void* sock_addr, int sock_addr_len)
+{
+    return ::bind(_fd, (sockaddr*)sock_addr, sock_addr_len);
 }
 
 void Socket::listen(int count)
@@ -166,29 +173,14 @@ Socket Socket::accept(SocketInfo* info)
     }
 
     if (info)
-    {
-        if (addr.ss_family == AF_INET)
-        {
-            sockaddr_in* s = reinterpret_cast<sockaddr_in*>(&addr);
-            memcpy(info->ip, reinterpret_cast<void*>(&s->sin_addr), sizeof(s->sin_addr));
-            info->port = ntohs(s->sin_port);
-            info->ip_version = SocketInfo::IPv4;
-        }
-        else if (addr.ss_family == AF_INET6)
-        {
-            sockaddr_in6* s = reinterpret_cast<sockaddr_in6*>(&addr);
-            memcpy(info->ip, reinterpret_cast<void*>(&s->sin6_addr), sizeof(s->sin6_addr));
-            info->port = ntohs(s->sin6_port);
-            info->ip_version = SocketInfo::IPv6;
-        }
-    }
+        info->from(&addr);
 
     return Socket(new_socket);
 }
 
 int Socket::recv(MemoryBuffer& buffer, int flags)
 {
-    size_t size = ::recv(
+    int size = ::recv(
         _fd,
         buffer.as<char*>(),
         buffer.get_capacity(),
@@ -210,9 +202,53 @@ int Socket::recv(char* buffer, size_t size, int flags)
     return ::recv(_fd, buffer, size, flags);
 }
 
+int Socket::recv_from(MemoryBuffer& buffer, SocketInfo* info, int flags)
+{
+    sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+
+    int size = ::recvfrom(
+        _fd,
+        buffer.as<char*>(),
+        buffer.get_size(),
+        flags,
+        reinterpret_cast<sockaddr*>(&addr),
+        &addr_len
+    );
+
+    if (size == -1)
+    {
+        throw IOException();
+    }
+
+    buffer.set_size(size);
+
+    if (info)
+        info->from(&addr);
+
+    return size;
+}
+
+int Socket::recv_from(
+    char* buffer,
+    size_t size,
+    void* sock_addr,
+    int* sock_addr_len,
+    int flags
+) {
+    return ::recvfrom(
+        _fd,
+        buffer,
+        size,
+        flags,
+        reinterpret_cast<sockaddr*>(sock_addr),
+        sock_addr_len
+    );
+}
+
 int Socket::send(MemoryBuffer& buffer, int flags)
 {
-    size_t size = ::send(
+    int size = ::send(
         _fd,
         buffer.as<char*>(),
         buffer.get_size(),
@@ -230,6 +266,62 @@ int Socket::send(MemoryBuffer& buffer, int flags)
 int Socket::send(const char* buffer, size_t size, int flags)
 {
     return ::send(_fd, buffer, size, flags);
+}
+
+int Socket::send_to(MemoryBuffer& buffer, SocketInfo& info, int flags)
+{
+    sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (info.ip_version == SocketInfo::IPv4)
+    {
+        addr.ss_family = AF_INET;
+        sockaddr_in* s = reinterpret_cast<sockaddr_in*>(&addr);
+        s->sin_addr.s_addr = *reinterpret_cast<uint32_t*>(info.ip);
+        s->sin_port = info.port;
+    }
+    else
+    {
+        addr.ss_family = AF_INET6;
+        sockaddr_in6* s = reinterpret_cast<sockaddr_in6*>(&addr);
+        s->sin6_port = info.port;
+        memcpy(&s->sin6_addr, info.ip, sizeof(s->sin6_addr));
+    }
+
+    int size = ::sendto(
+        _fd,
+        buffer.as<char*>(),
+        buffer.get_size(),
+        flags,
+        reinterpret_cast<sockaddr*>(&addr),
+        addr_len
+    );
+
+    if (size == -1)
+    {
+        throw IOException();
+    }
+
+    buffer.set_size(size);
+
+    return size;
+}
+
+int Socket::send_to(
+    const char* buffer,
+    size_t size,
+    void* sock_addr,
+    int sock_addr_len,
+    int flags
+) {
+    return ::sendto(
+        _fd,
+        buffer,
+        size,
+        flags,
+        reinterpret_cast<sockaddr*>(sock_addr),
+        sock_addr_len
+    );
 }
 
 void Socket::close()
@@ -272,6 +364,83 @@ int Socket::detach()
     return fd;
 }
 
+SocketInfo Socket::get_bound_address() const
+{
+    sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (getsockname(_fd, reinterpret_cast<sockaddr*>(&addr), &addr_len))
+    {
+        throw std::runtime_error("getsockname");
+    }
+    
+    SocketInfo info;
+    info.from(&addr);
+
+    return info;
+}
+
+SocketInfo Socket::get_peer_address() const
+{
+    sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (getpeername(_fd, reinterpret_cast<sockaddr*>(&addr), &addr_len))
+    {
+        throw std::runtime_error("getpeername");
+    }
+    
+    SocketInfo info;
+    info.from(&addr);
+
+    return info;
+}
+
+void SocketInfo::from(void* sock_addr)
+{
+    sockaddr_storage* addr = reinterpret_cast<sockaddr_storage*>(sock_addr);
+
+    if (addr->ss_family == AF_INET)
+    {
+        sockaddr_in* s = reinterpret_cast<sockaddr_in*>(addr);
+        memcpy(this->ip, reinterpret_cast<void*>(&s->sin_addr), sizeof(s->sin_addr));
+        this->port = s->sin_port;
+        this->ip_version = SocketInfo::IPv4;
+    }
+    else if (addr->ss_family == AF_INET6)
+    {
+        sockaddr_in6* s = reinterpret_cast<sockaddr_in6*>(addr);
+        memcpy(this->ip, reinterpret_cast<void*>(&s->sin6_addr), sizeof(s->sin6_addr));
+        this->port = s->sin6_port;
+        this->ip_version = SocketInfo::IPv6;
+    }
+}
+
+void SocketInfo::to(void* sock_addr, int* sock_addr_len)
+{
+    sockaddr_storage* saddr =
+        reinterpret_cast<sockaddr_storage*>(sock_addr);
+
+    if (this->ip_version == SocketInfo::IPv4)
+    {
+        saddr->ss_family = AF_INET;
+        sockaddr_in* s = reinterpret_cast<sockaddr_in*>(saddr);
+        s->sin_addr.s_addr =
+            *reinterpret_cast<uint32_t*>(this->ip);
+        s->sin_port = this->port;
+        *sock_addr_len = sizeof(sockaddr_in);
+    }
+    else
+    {
+        saddr->ss_family = AF_INET6;
+        sockaddr_in6* s =
+            reinterpret_cast<sockaddr_in6*>(saddr);
+        s->sin6_port = this->port;
+        memcpy(&s->sin6_addr, this->ip, sizeof(s->sin6_addr));
+        *sock_addr_len = sizeof(sockaddr_in6);
+    }
+}
+
 std::string SocketInfo::str() const
 {
     std::string address_str;
@@ -302,6 +471,30 @@ std::string SocketInfo::str() const
     address_str += ":" + std::to_string(ntohs(this->port));
 
     return address_str;
+}
+
+bool SocketInfo::operator==(const SocketInfo& other) const
+{
+    if (this->ip_version != other.ip_version)
+        return false;
+
+    if (this->port != other.port)
+        return false;
+
+    if (this->ip_version == SocketInfo::IPv4)
+    {
+        if (
+            *reinterpret_cast<const uint32_t*>(this->ip)
+            != *reinterpret_cast<const uint32_t*>(other.ip)
+        ) return false;
+    }
+    else
+    {
+        if (memcmp(this->ip, other.ip, sizeof(in6_addr)))
+            return false;
+    }
+
+    return true;
 }
 
 } // namespace sockspp

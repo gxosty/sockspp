@@ -43,7 +43,8 @@ if (_level <= _loglevel) { \
 #define LOGD(...) _SOCKSPP_LOG("D", LogLevel::Debug, __VA_ARGS__)
 #define LOGW(...) _SOCKSPP_LOG("W", LogLevel::Warning, __VA_ARGS__)
 #define LOGE(...) _SOCKSPP_LOG("E", LogLevel::Error, __VA_ARGS__)
-#define SET_LOG_LEVEL(_level) _loglevel = _level
+#define SET_LOG_LEVEL(_level) (_loglevel = _level)
+#define LOG_SCOPE(_level) if (_level <= _loglevel)
 
 #else
 

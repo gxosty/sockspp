@@ -22,6 +22,16 @@ namespace sockspp
 Server::Server(const ServerParams&& params)
     : _params(std::move(params)) {}
 
+const std::string& Server::get_listen_ip() const
+{
+    return _params.listen_ip;
+}
+
+uint16_t Server::get_listen_port() const
+{
+    return _params.listen_port;
+}
+
 AuthMethod Server::get_auth_method() const
 {
     if (_params.username.empty() && _params.password.empty())
@@ -98,8 +108,9 @@ void Server::serve()
             continue;
         }
 
-        for (auto& event : events)
+        for (int i = 0; i < events.size(); i++)
         {
+            Event& event = events[i];
             Event::Flags flags = event.get_flags();
 
             if (event.get_ptr() == reinterpret_cast<void*>(this))
@@ -111,10 +122,12 @@ void Server::serve()
                 }
                 else
                 {
+                    LOGE("Server error");
+                    this->stop();
                     break;
                 }
             }
-            else
+            else if (event.get_ptr())
             {
                 SessionSocket* session_socket = \
                     reinterpret_cast<SessionSocket*>(event.get_ptr());
@@ -122,6 +135,22 @@ void Server::serve()
                 if (!session_socket->process_event(flags))
                 {
                     Session* session = &session_socket->get_session();
+
+                    for (int j = i; j < events.size(); j++)
+                    {
+                        Event& event2 = events[j];
+                        if (event2.get_ptr() && event2.get_ptr() != this)
+                        {
+                            SessionSocket* session_socket2 = \
+                                reinterpret_cast<SessionSocket*>(event2.get_ptr());
+
+                            if (session == &session_socket2->get_session())
+                            {
+                                events[j] = Event(0, Event::Closed, nullptr);
+                            }
+                        }
+                    }
+
                     _delete_session(session);
                 }
             }
@@ -152,9 +181,7 @@ bool Server::is_serving() const
 
 Socket Server::_accept_client()
 {
-    SocketInfo client_info;
-    Socket client = _server_socket.accept(&client_info);
-    LOGD("Accepted: %s", client_info.str().c_str());
+    Socket client = _server_socket.accept();
     return client;
 }
 

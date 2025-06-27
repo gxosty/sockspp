@@ -27,6 +27,15 @@ RemoteSocket::RemoteSocket(
     Socket& _sock = this->get_socket();
     _sock.set_blocking(false);
     _sock.set_nodelay(true);
+
+    if (!addresses)
+        _connected = true;
+}
+
+RemoteSocket::~RemoteSocket()
+{
+    if (_addresses)
+        delete _addresses;
 }
 
 bool RemoteSocket::process_event(Event::Flags event_flags)
@@ -102,6 +111,8 @@ bool RemoteSocket::could_connect()
     delete _addresses;
     _addresses = nullptr;
 
+    _remote_info = this->get_socket().get_peer_address();
+
     return this->get_session().reply_remote_connection(
         Reply::Success,
         connected_address.get_version() == IPAddress::Version::IPv4
@@ -110,6 +121,11 @@ bool RemoteSocket::could_connect()
         connected_address.get_address(),
         connected_address.get_port()
     );
+}
+
+const SocketInfo& RemoteSocket::get_remote_info() const
+{
+    return _remote_info;
 }
 
 } // namespace sockspp

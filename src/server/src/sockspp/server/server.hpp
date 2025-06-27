@@ -20,6 +20,8 @@ public:
     void stop();
     bool is_serving() const;
 
+    const std::string& get_listen_ip() const;
+    uint16_t get_listen_port() const;
     AuthMethod get_auth_method() const;
 
     bool authenticate(

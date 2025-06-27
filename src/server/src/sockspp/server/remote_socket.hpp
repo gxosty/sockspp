@@ -20,13 +20,17 @@ public:
         Socket&& sock,
         const std::vector<IPAddress>* addresses
     );
+    ~RemoteSocket();
 
     bool process_event(Event::Flags event_flags) override;
+
     bool is_connected() const;
     bool try_connect_next();
     bool could_connect();
+    const SocketInfo& get_remote_info() const;
 
 private:
+    SocketInfo _remote_info;
     const std::vector<IPAddress>* _addresses;
     size_t _connecting_idx;
     bool _connected;

@@ -29,21 +29,42 @@ public:
     bool set_nodelay(bool enabled);
 
     void connect(const std::string& ip, uint16_t port);
-    int connect(void* sock_addr, size_t sock_addr_len);
+    int connect(void* sock_addr, int sock_addr_len);
     void bind(const std::string& ip, uint16_t port);
+    int bind(void* sock_addr, int sock_addr_len);
     void listen(int count);
     Socket accept(SocketInfo* info = nullptr);
 
     int recv(MemoryBuffer& buffer, int flags = 0);
     int recv(char* buffer, size_t size, int flags = 0);
+    int recv_from(MemoryBuffer& buffer, SocketInfo* info = nullptr, int flags = 0);
+    int recv_from(
+        char* buffer,
+        size_t size,
+        void* sock_addr,
+        int* sock_addr_len,
+        int flags = 0
+    );
+
     int send(MemoryBuffer& buffer, int flags = 0);
     int send(const char* buffer, size_t size, int flags = 0);
+    int send_to(MemoryBuffer& buffer, SocketInfo& info, int flags = 0);
+    int send_to(
+        const char* buffer,
+        size_t size,
+        void* sock_addr,
+        int sock_addr_len,
+        int flags = 0
+    );
 
     void close();
     int shutdown(int mode = -1);
 
     int get_fd() const;
     int detach();
+
+    SocketInfo get_bound_address() const;
+    SocketInfo get_peer_address() const;
 
     void operator=(Socket&& other)
     {
@@ -67,7 +88,11 @@ struct SocketInfo
     uint16_t port;
     IPVersion ip_version;
 
+    void from(void* sock_addr);
+    void to(void* sock_addr, int* sock_addr_len);
     std::string str() const;
+
+    bool operator==(const SocketInfo& other) const;
 }; // struct SocketInfo
 
 } // namespace sockspp

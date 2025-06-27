@@ -2,9 +2,10 @@
 
 #include "client_socket.hpp"
 #include "remote_socket.hpp"
-#include "sockspp/core/memory_buffer.hpp"
-#include "sockspp/core/buffer.hpp"
+#include "udp_socket.hpp"
 
+#include <sockspp/core/memory_buffer.hpp>
+#include <sockspp/core/buffer.hpp>
 #include <sockspp/core/poller/poller.hpp>
 #include <sockspp/core/socket.hpp>
 #include <sockspp/core/ip_address.hpp>
@@ -28,6 +29,7 @@ public:
         ResolvingDomainName,
         ConnectingRemote,
         Connected,
+        Associated,
         Invalid
     };
 
@@ -44,6 +46,7 @@ public:
 
     bool process_client_event(Event::Flags event_flags);
     bool process_remote_event(Event::Flags event_flags);
+    bool process_udp_event(Event::Flags event_flags);
 
     bool reply_remote_connection(
         Reply reply,
@@ -55,8 +58,8 @@ public:
 private:
     void _set_state(State state);
 
-    bool _process_client(MemoryBuffer& buffer);
-    bool _process_remote(MemoryBuffer& buffer);
+    bool _process_client(MemoryBuffer& buffer, void* addr, int addr_len);
+    bool _process_remote(MemoryBuffer& buffer, void* addr, int addr_len);
     bool _session_socket_send(
         SessionSocket* session_socket,
         MemoryBuffer* buffer,
@@ -76,15 +79,17 @@ private:
     );
 
     void _remote_connected();
+    bool _associate(Socket&& cl_sock, Socket&& rm_sock);
 
 private:
     Buffer _client_buffer;
     Buffer _remote_buffer;
+    SocketInfo _peer_info;
     const Server& _server;
     Poller& _poller;
     ClientSocket* _client_socket;
     RemoteSocket* _remote_socket;
-    // UDPSocket _udp_socket;
+    UDPSocket* _udp_socket;
     
     State _state = State::Invalid;
     Command _command = Command::Invalid;

@@ -1,13 +1,25 @@
 #include "session.hpp"
 #include "server.hpp"
 #include "defs.hpp"
+#include "sockspp/core/s5_enums.hpp"
+#include "sockspp/server/remote_socket.hpp"
+#include "sockspp/server/udp_socket.hpp"
 
 #include <cerrno>
+#include <exception>
 #include <sockspp/core/s5.hpp>
 #include <sockspp/core/errno.hpp>
 #include <sockspp/core/memory_buffer.hpp>
 #include <sockspp/core/poller/event.hpp>
 #include <sockspp/core/log.hpp>
+
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+#endif // _WIN32
 
 namespace sockspp
 {
@@ -20,6 +32,7 @@ Session::Session(
     , _poller(poller)
     , _client_socket(new ClientSocket(std::move(sock)))
     , _remote_socket(nullptr)
+    , _udp_socket(nullptr)
     , _client_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE)
     , _remote_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE) {}
 
@@ -30,8 +43,8 @@ Session::~Session()
     if (_remote_socket)
         delete _remote_socket;
 
-    // if (_udp_socket)
-    //     delete _udp_socket;
+    if (_udp_socket)
+        delete _udp_socket;
 }
 
 void Session::initialize()
@@ -44,11 +57,15 @@ void Session::initialize()
         static_cast<Event::Flags>(Event::Read | Event::Closed)
     );
 
+    _peer_info = _client_socket->get_socket().get_peer_address();
+
     _state = Session::State::Accepted;
 }
 
 void Session::shutdown()
 {
+    LOGI("Shutdown cli:%s", _peer_info.str().c_str());
+
     _poller.remove_event(_client_socket->get_socket().get_fd());
     _client_socket->get_socket().shutdown();
     _client_socket->get_socket().close();
@@ -60,12 +77,12 @@ void Session::shutdown()
         _remote_socket->get_socket().close();
     }
 
-    // if (_udp_socket)
-    // {
-    //     _poller.remove_event(_udp_socket->get_socket().get_fd());
-    //     _udp_socket->get_socket().shutdown();
-    //     _udp_socket->get_socket().close();
-    // }
+    if (_udp_socket)
+    {
+        _poller.remove_event(_udp_socket->get_socket().get_fd());
+        _udp_socket->get_socket().shutdown();
+        _udp_socket->get_socket().close();
+    }
 }
 
 bool Session::process_client_event(Event::Flags event_flags)
@@ -95,11 +112,11 @@ bool Session::process_client_event(Event::Flags event_flags)
     }
     else if (status == -1)
     {
-        LOGE("Client error: %d", sockerrno);
+        LOGE("Client receive error (errno: %d, session state: %hhu)", sockerrno, _state);
         return false;
     }
 
-    return _process_client(buffer);
+    return _process_client(buffer, nullptr, 0);
 }
 
 bool Session::process_remote_event(Event::Flags event_flags)
@@ -109,14 +126,11 @@ bool Session::process_remote_event(Event::Flags event_flags)
         return false;
     }
 
-    RemoteSocket* remote_socket =
-        reinterpret_cast<RemoteSocket*>(_remote_socket);
-
     if (event_flags & Event::Error)
     {
-        if (!remote_socket->is_connected())
+        if (!_remote_socket->is_connected())
         {
-            return remote_socket->try_connect_next();
+            return _remote_socket->try_connect_next();
         }
 
         return false;
@@ -124,8 +138,8 @@ bool Session::process_remote_event(Event::Flags event_flags)
 
     if (event_flags & Event::Write)
     {
-        if (!remote_socket->is_connected())
-            return remote_socket->could_connect();
+        if (!_remote_socket->is_connected())
+            return _remote_socket->could_connect();
 
         return _session_socket_send(_remote_socket, nullptr, _remote_buffer);
     }
@@ -137,7 +151,18 @@ bool Session::process_remote_event(Event::Flags event_flags)
         SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
     );
 
-    int status = remote_socket->recv(buffer);
+    int status = -1;
+    sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (_state == Session::State::Connected)
+    {
+        status = _remote_socket->recv(buffer);
+    }
+    else if (_state == Session::State::Associated)
+    {
+        status = _remote_socket->recv_from(buffer, &addr, &addr_len);
+    }
 
     if (status == 0)
     {
@@ -145,10 +170,42 @@ bool Session::process_remote_event(Event::Flags event_flags)
     }
     else if (status == -1)
     {
+        LOGE("Remote receive error (errno: %d, session state: %hhu)", sockerrno, _state);
         return false;
     }
 
-    return _process_remote(buffer);
+    return _process_remote(buffer, &addr, addr_len);
+}
+
+bool Session::process_udp_event(Event::Flags event_flags)
+{
+    if (event_flags & (Event::Closed | Event::Error))
+    {
+        return false;
+    }
+
+    char _buffer[SOCKSPP_SESSION_SOCKET_BUFFER_SIZE];
+    MemoryBuffer buffer(
+        _buffer,
+        0,
+        SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
+    );
+
+    sockaddr_storage addr;
+    socklen_t addr_len = sizeof(addr);
+    int status = _udp_socket->recv_from(buffer, &addr, &addr_len);
+
+    if (status == 0)
+    {
+        // invalid source ip, so we drop the packet
+        return true;
+    }
+    else if (status == -1)
+    {
+        return false;
+    }
+
+    return _process_client(buffer, &addr, addr_len);
 }
 
 bool Session::reply_remote_connection(
@@ -172,7 +229,7 @@ bool Session::reply_remote_connection(
         && (reply == Reply::Success);
 }
 
-bool Session::_process_client(MemoryBuffer& buffer)
+bool Session::_process_client(MemoryBuffer& buffer, void* addr, int addr_len)
 {
     switch (_state)
     {
@@ -197,25 +254,43 @@ bool Session::_process_client(MemoryBuffer& buffer)
             return _do_command(addresses);
         }
     case Session::State::Connected:
+        LOGD(
+            "TCP | %s -> %s | %llu",
+            _peer_info.str().c_str(),
+            _remote_socket->get_remote_info().str().c_str(),
+            buffer.get_size()
+        );
+
         return _session_socket_send(_remote_socket, &buffer, _remote_buffer);
+    case Session::State::Associated:
+        return _remote_socket->send_to(buffer, addr, addr_len);
     default:
         break;
     }
 
-    LOGE("Undefined session state");
+    LOGD("Undefined session state (Client)");
     return false;
 }
 
-bool Session::_process_remote(MemoryBuffer& buffer)
+bool Session::_process_remote(MemoryBuffer& buffer, void* addr, int addr_len)
 {
     switch (_state)
     {
     case Session::State::Connected:
+        LOGD(
+            "TCP | %s <- %s | %llu",
+            _peer_info.str().c_str(),
+            _remote_socket->get_remote_info().str().c_str(),
+            buffer.get_size()
+        );
         return _session_socket_send(_client_socket, &buffer, _client_buffer);
+    case Session::State::Associated:
+        return _udp_socket->send_to(buffer, addr, addr_len);
     default:
         break;
     }
 
+    LOGD("Undefined session state (Remote)");
     return false;
 }
 
@@ -383,9 +458,9 @@ bool Session::_check_command(MemoryBuffer& buffer)
     switch (command)
     {
     case Command::Connect:
+    case Command::UdpAssociate:
         break;
     case Command::Bind:
-    case Command::UdpAssociate:
     default:
         LOGW("Unsupported command: %d", static_cast<int>(command));
         {
@@ -453,7 +528,7 @@ bool Session::_do_command(
     {
     case Command::Connect:
         {
-            Socket sock = \
+            Socket sock =
                 addresses->at(0).get_version() == IPAddress::Version::IPv4
                 ? Socket::open_tcp()
                 : Socket::open_tcp6();
@@ -462,6 +537,19 @@ bool Session::_do_command(
         }
         break;
     case Command::UdpAssociate:
+        {
+            bool is_ipv4 = addresses->at(0).get_version() == IPAddress::Version::IPv4;
+
+            Socket cl_sock = is_ipv4
+                ? Socket::open_udp()
+                : Socket::open_udp6();
+
+            Socket rm_sock = is_ipv4
+                ? Socket::open_udp()
+                : Socket::open_udp6();
+
+            return _associate(std::move(cl_sock), std::move(rm_sock));
+        }
     case Command::Bind:
     default:
         break;
@@ -499,7 +587,85 @@ void Session::_remote_connected()
         static_cast<Event::Flags>(Event::Read | Event::Closed),
         true
     );
+
+#if !SOCKSPP_DISABLE_LOGS
+    SocketInfo remote_info = _remote_socket->get_remote_info();
+
+    LOGI(
+        "TCP CONNECT | cli:%s <-> rem:%s",
+        _peer_info.str().c_str(),
+        remote_info.str().c_str()
+    );
+#endif
+
     _set_state(Session::State::Connected);
+}
+
+bool Session::_associate(Socket&& cl_sock, Socket&& rm_sock)
+{
+    sockaddr_storage bind_addr;
+    socklen_t bind_addr_len = sizeof(bind_addr);
+    SocketInfo client_bound_info = _client_socket->get_socket() .get_bound_address();
+    client_bound_info.to(&bind_addr, &bind_addr_len);
+
+    if (bind_addr.ss_family == AF_INET)
+        reinterpret_cast<sockaddr_in*>(&bind_addr)->sin_port = 0;
+    else
+        reinterpret_cast<sockaddr_in6*>(&bind_addr)->sin6_port = 0;
+
+    if (cl_sock.bind(&bind_addr, bind_addr_len) == -1)
+    {
+        LOGE("cl_sock.bind() == -1: %d", sockerrno);
+        return false;
+    }
+
+    SocketInfo bound_info;
+
+    try {
+        bound_info = cl_sock.get_bound_address();
+    } catch (const std::exception& ex) {
+        LOGE("cl_sock.get_bound_address()");
+        return false;
+    }
+    
+    if (!_client_socket->send_reply(
+        Reply::Success,
+        bound_info.ip_version == SocketInfo::IPv4
+            ? AddrType::IPv4
+            : AddrType::IPv6,
+        bound_info.ip,
+        ntohs(bound_info.port)
+    )) {
+        LOGD("failed sending association reply");
+        return false;
+    }
+
+    _udp_socket = new UDPSocket(std::move(cl_sock), _peer_info);
+    _udp_socket->set_session(*this);
+
+    _poller.set_event(
+        _udp_socket->get_socket().get_fd(),
+        _udp_socket,
+        static_cast<Event::Flags>(Event::Read | Event::Closed)
+    );
+
+    _remote_socket = new RemoteSocket(std::move(rm_sock), nullptr);
+    _remote_socket->set_session(*this);
+
+    _poller.set_event(
+        _remote_socket->get_socket().get_fd(),
+        _remote_socket,
+        static_cast<Event::Flags>(Event::Read | Event::Closed)
+    );
+
+    LOGI(
+        "UDP ASSOCIATE | cli:%s <-> bnd:%s",
+        _peer_info.str().c_str(),
+        client_bound_info.str().c_str()
+    );
+
+    _set_state(Session::State::Associated);
+    return true;
 }
 
 } // namespace sockspp

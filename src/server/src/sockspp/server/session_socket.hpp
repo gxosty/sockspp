@@ -47,10 +47,46 @@ public:
         return size;
     }
 
+    virtual int recv_from(
+        MemoryBuffer& buffer,
+        void* sock_addr,
+        int* sock_addr_len
+    ) {
+        Socket& sock = this->get_socket();
+
+        int size = sock.recv_from(
+            buffer.as<char*>(),
+            buffer.get_capacity(),
+            sock_addr,
+            sock_addr_len,
+            0
+        );
+
+        buffer.set_size(size > 0 ? size : 0);
+
+        return size;
+    }
+
     virtual int send(MemoryBuffer& buffer)
     {
         Socket& sock = this->get_socket();
         return sock.send(buffer.as<char*>(), buffer.get_size(), 0);
+    }
+
+    virtual int send_to(
+        MemoryBuffer& buffer,
+        void* sock_addr,
+        int sock_addr_len
+    ) {
+        Socket& sock = this->get_socket();
+
+        return sock.send_to(
+            buffer.as<const char*>(),
+            buffer.get_size(),
+            sock_addr,
+            sock_addr_len,
+            0
+        );
     }
 
     inline Session& get_session() const

@@ -22,7 +22,7 @@ public:
     void set_address(uint8_t* address); // depends on type to be set first
 
     uint16_t get_port() const;
-    void set_port(uint16_t port);
+    void set_port(uint16_t port, bool netport = false);
 
 private:
     void* _data;
@@ -79,5 +79,12 @@ public:
         _set_cmd_or_rep(static_cast<uint8_t>(reply));
     }
 }; // class CommandMessage
+
+// Do we even need a separate class for udp?
+class S5UDPHeader : public S5R_Base
+{
+public:
+    S5UDPHeader(void* data) : S5R_Base(data) {}
+}; // class S5UDPHeader
 
 } // namespace sockspp
