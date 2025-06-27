@@ -661,7 +661,7 @@ bool Session::_associate(Socket&& cl_sock, Socket&& rm_sock)
     LOGI(
         "UDP ASSOCIATE | cli:%s <-> bnd:%s",
         _peer_info.str().c_str(),
-        client_bound_info.str().c_str()
+        bound_info.str().c_str()
     );
 
     _set_state(Session::State::Associated);
