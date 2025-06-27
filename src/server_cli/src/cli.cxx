@@ -91,7 +91,7 @@ static inline sockspp::ServerParams parse_params(int argc, char* argv[])
     }
 
     std::string listen_ip = parser.get<std::string>("--listen-ip");
-    uint16_t listen_port = parser.get<int>("--listen-port");
+    uint16_t listen_port = parser.get<uint16_t>("--listen-port");
     std::string username = parser.get<std::string>("--username");
     std::string password = parser.get<std::string>("--password");
 
