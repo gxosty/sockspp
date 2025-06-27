@@ -53,5 +53,6 @@ if (_level <= _loglevel) { \
 #define LOGW(...)
 #define LOGE(...)
 #define SET_LOG_LEVEL(_level)
+#define LOG_SCOPE(_level)
 
 #endif // SOCKSPP_DISABLE_LOGS
