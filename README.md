@@ -8,9 +8,11 @@ The primary goal of sockspp is to provide a robust, cross-platform, and fully as
 
 ### Current Features
 
-* CONNECT Command Support: sockspp currently supports the CONNECT command.
+* CONNECT support
 
-* IPv4 and IPv6: Full support for both IPv4 and IPv6 addresses for CONNECT operations.
+* UDP ASSOCIATE support
+
+* IPv4 and IPv6: Full support for both IPv4 and IPv6 addresses.
 
 * Asynchronous/Event-Driven: Designed from the ground up with an event-driven architecture to avoid the complexities and overhead of multiple threads.
 
@@ -21,8 +23,6 @@ The primary goal of sockspp is to provide a robust, cross-platform, and fully as
 The following features are planned for future development:
 
 * Domain Name Resolution: Implementation of domain name resolution for target addresses.
-
-* UDP Associate: Full support for the UDP ASSOCIATE command, crucial for applications using UDP (e.g., gaming, streaming).
 
 * BIND Command: While not a primary focus, the BIND command might be considered in the future, though it is less common for typical SOCKS5 server use cases.
 
