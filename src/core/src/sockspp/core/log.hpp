@@ -38,8 +38,8 @@ enum class LogLevel
 #if !SOCKSPP_DISABLE_LOGS
 
 #include <stdio.h>
-#include <time.h>
 #include <string.h>
+#include <chrono>
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : \
                     (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__))
@@ -71,15 +71,22 @@ inline LogLevel _loglevel = LogLevel::Off;
 #endif // SOCKSPP_DISABLE_LOCATION_LOGS
 
 #define _SOCKSPP_TTFL_LOG(_color, _tag, _current_time, _filename, _line, ...) \
-    char _time_buffer[24]; strftime(_time_buffer, 24, "%H:%M:%S", _current_time); \
+    auto _milliseconds = \
+        std::chrono::duration_cast<std::chrono::milliseconds>( \
+            _current_time.time_since_epoch() \
+        ).count() % 1000; \
+    time_t _c_time = std::chrono::system_clock::to_time_t(_current_time); \
+    tm _tm_time = *localtime(&_c_time); \
+    char _time_buffer[24]; \
+    size_t _size = strftime(_time_buffer, 24, "%H:%M:%S", &_tm_time); \
+    sprintf(&_time_buffer[_size], ".%03llu", _milliseconds); \
     _SOCKSPP_IN_TTFL_LOG(_color, _tag, _time_buffer, _filename, _line) \
     fprintf(stderr, __VA_ARGS__); \
     fputs("\n", stderr); \
 
 #define _SOCKSPP_LOG(_tag, _level, ...) \
-if (_level <= _loglevel) { \
-    time_t _timer = time(NULL); \
-    struct tm* _current_time = localtime(&_timer); \
+{ \
+    auto _current_time = std::chrono::system_clock::now(); \
     const char* _color = NULL; \
     switch (_level) { \
         case LOG_LEVEL_OFF: _color = COLOR_RESET; break; \
