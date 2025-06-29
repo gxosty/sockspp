@@ -21,7 +21,10 @@ namespace sockspp
 {
 
 Server::Server(const ServerParams&& params)
-    : _params(std::move(params)) {}
+    : _params(std::move(params))
+{
+    _sessions.reserve(128);
+}
 
 const std::string& Server::get_listen_ip() const
 {
@@ -142,7 +145,7 @@ void Server::serve()
                     Session* session = &session_socket->get_session();
 
                     // invalidate all next events associated
-                    // with the deleted session
+                    // with the deleted session if there are any
                     for (int j = i; j < events.size(); j++)
                     {
                         Event& event2 = events[j];
@@ -173,6 +176,13 @@ void Server::serve()
 
         poller.remove_event(server_event);
     }
+
+    _delete_all_sessions();
+
+    if (this->is_serving())
+    {
+        this->stop();
+    }
 }
 
 void Server::stop()
@@ -196,13 +206,29 @@ Session* Server::_create_new_session(Poller& poller, Socket&& sock)
 {
     Session* session = new Session(*this, poller, std::move(sock));
     session->initialize();
+    _sessions.push_back(session);
     return session;
 }
 
 void Server::_delete_session(Session* session)
 {
     session->shutdown();
+    _sessions.erase(std::find(
+        _sessions.begin(),
+        _sessions.end(),
+        session
+    ));
     delete session;
+}
+
+void Server::_delete_all_sessions()
+{
+    for (auto session : _sessions)
+    {
+        delete session;
+    }
+
+    _sessions.clear();
 }
 
 } // namespace sockspp

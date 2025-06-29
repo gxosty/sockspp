@@ -7,6 +7,8 @@
 #include <sockspp/core/socket.hpp>
 #include <sockspp/core/poller/poller.hpp>
 
+#include <vector>
+
 namespace sockspp
 {
 
@@ -33,9 +35,11 @@ private:
     Socket _accept_client();
     Session* _create_new_session(Poller& poller, Socket&& sock);
     void _delete_session(Session* session);
+    void _delete_all_sessions();
 
 private:
     ServerParams _params;
+    std::vector<Session*> _sessions;
     Socket _server_socket;
 
 }; // class Server
