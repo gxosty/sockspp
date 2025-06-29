@@ -9,6 +9,7 @@
 #include <sockspp/core/log.hpp>
 
 #include <vector>
+#include <algorithm>
 
 #if defined(_WIN32)
     #define SOCKSPP_POLL_TIMEOUT 2000
@@ -113,6 +114,7 @@ void Server::serve()
             Event& event = events[i];
             Event::Flags flags = event.get_flags();
 
+            // server 
             if (event.get_ptr() == reinterpret_cast<void*>(this))
             {
                 if (flags & Event::Read)
@@ -127,6 +129,8 @@ void Server::serve()
                     break;
                 }
             }
+
+            // session
             else if (event.get_ptr())
             {
                 SessionSocket* session_socket = \
@@ -134,8 +138,11 @@ void Server::serve()
 
                 if (!session_socket->process_event(flags))
                 {
+                    // delete session when socket is closed
                     Session* session = &session_socket->get_session();
 
+                    // invalidate all next events associated
+                    // with the deleted session
                     for (int j = i; j < events.size(); j++)
                     {
                         Event& event2 = events[j];
