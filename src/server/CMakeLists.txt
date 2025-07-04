@@ -10,6 +10,7 @@ list(APPEND SOURCES
     src/sockspp/server/remote_socket.cxx
     src/sockspp/server/udp_socket.cxx
     src/sockspp/server/session.cxx
+    src/sockspp/server/utils.cxx
 )
 
 if(SOCKSPP_BUILD_SHARED)

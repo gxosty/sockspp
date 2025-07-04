@@ -4,7 +4,7 @@
 #include <sockspp/core/exceptions.hpp>
 #include <sockspp/core/log.hpp>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 ClientSocket::ClientSocket(Socket&& sock)
@@ -55,5 +55,5 @@ bool ClientSocket::send_reply(
     return get_socket().send(reinterpret_cast<const char*>(data), message.get_size());
 }
 
-} // namespace sockspp
+} // namespace sockspp::server
 

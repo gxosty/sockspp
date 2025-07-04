@@ -13,7 +13,7 @@
     #include <netinet/in.h>
 #endif
 
-namespace sockspp
+namespace sockspp::server
 {
 
 RemoteSocket::RemoteSocket(
@@ -128,4 +128,4 @@ const SocketInfo& RemoteSocket::get_remote_info() const
     return _remote_info;
 }
 
-} // namespace sockspp
+} // namespace sockspp::server

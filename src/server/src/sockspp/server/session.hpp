@@ -13,7 +13,7 @@
 
 #include <vector>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 class Server;
@@ -95,4 +95,4 @@ private:
     Command _command = Command::Invalid;
 }; // class Session
 
-} // namespace sockspp
+} // namespace sockspp::server

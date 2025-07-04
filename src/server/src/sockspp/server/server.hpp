@@ -9,7 +9,7 @@
 
 #include <vector>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 class Server
@@ -44,4 +44,4 @@ private:
 
 }; // class Server
 
-} // namespace sockspp
+} // namespace sockspp::server

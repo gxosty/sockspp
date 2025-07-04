@@ -17,7 +17,7 @@
     #define SOCKSPP_POLL_TIMEOUT -1
 #endif // _WIN32
 
-namespace sockspp
+namespace sockspp::server
 {
 
 Server::Server(const ServerParams&& params)
@@ -231,4 +231,4 @@ void Server::_delete_all_sessions()
     _sessions.clear();
 }
 
-} // namespace sockspp
+} // namespace sockspp::server

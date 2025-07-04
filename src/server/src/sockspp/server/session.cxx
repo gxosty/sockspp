@@ -21,7 +21,7 @@
     #include <netinet/in.h>
 #endif // _WIN32
 
-namespace sockspp
+namespace sockspp::server
 {
 
 Session::Session(
@@ -668,4 +668,4 @@ bool Session::_associate(Socket&& cl_sock, Socket&& rm_sock)
     return true;
 }
 
-} // namespace sockspp
+} // namespace sockspp::server

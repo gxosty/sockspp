@@ -8,7 +8,7 @@
 
 #include <vector>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 class Session;
@@ -36,4 +36,4 @@ private:
     bool _connected;
 }; // class RemoteSocket
 
-} // namespace sockspp
+} // namespace sockspp::server

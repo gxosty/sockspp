@@ -13,7 +13,7 @@
     #include <netinet/in.h>
 #endif
 
-namespace sockspp
+namespace sockspp::server
 {
 
 UDPSocket::UDPSocket(Socket&& sock, SocketInfo client_info)
@@ -215,4 +215,4 @@ int UDPSocket::send_to(
     return buffer.get_size();
 }
 
-} // namespace socks;
+} // namespace sockspp::server

@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <cstdint>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 class UDPSocket : public SessionSocket
@@ -25,4 +25,4 @@ private:
 
 }; // class UDPSocket
 
-}; // class UDPSocket
+}; // namespace sockspp::server

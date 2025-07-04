@@ -1,5 +1,3 @@
-#include "sockspp/core/exceptions.hpp"
-
 #ifdef _WIN32
     #include <winsock2.h>
 #endif // _WIN32
@@ -18,7 +16,7 @@
 namespace
 {
 
-static sockspp::Server* g_server = nullptr;
+static sockspp::server::Server* g_server = nullptr;
 
 }
 
@@ -49,7 +47,7 @@ static inline void prepare_sigint()
     signal(SIGINT, sigint_handler);
 }
 
-static inline sockspp::ServerParams parse_params(int argc, char* argv[])
+static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
 {
     argparse::ArgumentParser parser(SOCKSPP_NAME, SOCKSPP_VERSION);    
     
@@ -120,7 +118,7 @@ static inline sockspp::ServerParams parse_params(int argc, char* argv[])
     SET_LOG_LEVEL(log_level);
 #endif
 
-    return sockspp::ServerParams{
+    return sockspp::server::ServerParams{
         .listen_ip = listen_ip,
         .listen_port = listen_port,
         .username = username,
@@ -135,11 +133,11 @@ extern "C" {
 int sockspp_main(int argc, char* argv[])
 {
     initialize();
-    sockspp::ServerParams params = parse_params(argc, argv);
+    sockspp::server::ServerParams params = parse_params(argc, argv);
 
     sockspp_print_greeting();
 
-    g_server = new sockspp::Server(std::move(params));
+    g_server = new sockspp::server::Server(std::move(params));
     prepare_sigint();
     g_server->serve();
     LOGI("Server stopped");

@@ -3,7 +3,7 @@
 #include "session_socket.hpp"
 #include <sockspp/core/s5_enums.hpp>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 class ClientSocket : public SessionSocket
@@ -23,4 +23,4 @@ public:
     );
 }; // class ClientSocket
 
-} // namespace sockspp
+} // namespace sockspp::server

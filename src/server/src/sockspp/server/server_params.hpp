@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 struct ServerParams
@@ -16,4 +16,4 @@ struct ServerParams
     uint16_t dns_port = 53;
 }; // class ServerParams
 
-} // namespace sockspp
+} // namespace sockspp::server

@@ -3,7 +3,7 @@
 #include <sockspp/core/socket.hpp>
 #include <sockspp/core/poller/poller.hpp>
 
-namespace sockspp
+namespace sockspp::server
 {
 
 class Session;
@@ -112,4 +112,4 @@ private:
 
 }; // class SessionSocket
 
-}; // namespace sockspp
+}; // namespace sockspp::server
