@@ -7,6 +7,13 @@
 namespace sockspp
 {
 
+Buffer::Buffer()
+{
+    _ptr = nullptr;
+    _capacity = 0;
+    _size = 0;
+}
+
 Buffer::Buffer(size_t capacity) : MemoryBuffer()
 {
     _ptr = malloc(capacity);
@@ -22,7 +29,8 @@ Buffer::Buffer(size_t capacity) : MemoryBuffer()
 
 Buffer::~Buffer()
 {
-    free(_ptr);
+    if (_ptr)
+        free(_ptr);
 }
 
 } // namespace sockspp

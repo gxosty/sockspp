@@ -5,10 +5,17 @@ set(PROJECT_NAME sockspp-core)
 project(${PROJECT_NAME})
 
 list(APPEND SOURCES
+    # sockspp
     src/sockspp/core/s5.cxx
     src/sockspp/core/buffer.cxx
     src/sockspp/core/socket.cxx
     src/sockspp/core/ip_address.cxx
+
+    # dnslib
+    src/dnslib/buffer.cpp
+    src/dnslib/message.cpp
+    src/dnslib/qs.cpp
+    src/dnslib/rr.cpp
 )
 
 if(WIN32)

@@ -9,6 +9,7 @@ namespace sockspp
 class Buffer : public MemoryBuffer
 {
 public:
+    Buffer();
     Buffer(size_t capacity);
     ~Buffer();
 };
