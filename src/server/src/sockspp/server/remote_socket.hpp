@@ -13,6 +13,7 @@ namespace sockspp::server
 
 class Session;
 
+// You can call it a TCP socket
 class RemoteSocket : public SessionSocket
 {
 public:

@@ -3,6 +3,7 @@
 #include "client_socket.hpp"
 #include "remote_socket.hpp"
 #include "udp_socket.hpp"
+#include "dns_socket.hpp"
 
 #include <sockspp/core/memory_buffer.hpp>
 #include <sockspp/core/buffer.hpp>

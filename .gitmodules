@@ -1,6 +1,3 @@
 [submodule "src/core/thirdparty/wepoll"]
 	path = src/core/thirdparty/wepoll
 	url = https://github.com/piscisaureus/wepoll
-[submodule "src/core/thirdparty/dnslib"]
-	path = src/core/thirdparty/dnslib
-	url = https://github.com/mnezerka/dnslib
