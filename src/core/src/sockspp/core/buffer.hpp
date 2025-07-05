@@ -5,7 +5,7 @@
 namespace sockspp
 {
 
-// Just a fixed size buffer
+// Just a fixed size buffer (in heap)
 class Buffer : public MemoryBuffer
 {
 public:

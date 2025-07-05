@@ -58,7 +58,7 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
 
     parser.add_argument("--listen-port")
         .help("listen port")
-        .default_value(1080)
+        .default_value((uint16_t)1080)
         .scan<'d', uint16_t>()
         .nargs(1);
 
@@ -123,6 +123,8 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
         .listen_port = listen_port,
         .username = username,
         .password = password,
+        .dns_ip = "192.168.1.1",
+        .dns_port = 53
     };
 }
 

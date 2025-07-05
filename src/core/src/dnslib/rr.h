@@ -566,16 +566,16 @@ class ResourceRecord
         uint getName() const;
 
         void setType(const eRDataType type) { mType = type; };
-        eRDataType getType() const;
+        eRDataType getType() const { return mType; };
 
         void setClass(eClass newClass) { mClass = newClass; };
-        eClass getClass() const;
+        eClass getClass() const { return mClass; };
 
         void setTtl(uint newTtl) { mTtl = newTtl; };
         uint getTtl() const;
 
         void setRData(RData *newRData) { mRData = newRData; mType = newRData->getType(); };
-        //const char* getRData() const;
+        RData* getRData() const;
 
         void decode(Buffer &buffer);
         void encode(Buffer &buffer);

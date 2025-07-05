@@ -568,6 +568,11 @@ void ResourceRecord::encode(Buffer &buffer)
     }
 }
 
+RData* ResourceRecord::getRData() const
+{
+    return mRData;
+}
+
 std::string ResourceRecord::asString()
 {
     ostringstream text;

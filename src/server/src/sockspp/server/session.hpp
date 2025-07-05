@@ -48,6 +48,7 @@ public:
     bool process_client_event(Event::Flags event_flags);
     bool process_remote_event(Event::Flags event_flags);
     bool process_udp_event(Event::Flags event_flags);
+    bool process_dns_event(Event::Flags event_flags, DnsSocket* dns_socket);
 
     bool reply_remote_connection(
         Reply reply,
@@ -71,18 +72,19 @@ private:
     bool _request_auth(MemoryBuffer& buffer);
     bool _handle_auth(MemoryBuffer& buffer);
     bool _check_command(MemoryBuffer& buffer);
-    std::vector<IPAddress>* _resolve_address(MemoryBuffer& buffer, bool* is_domain_name);
+    std::vector<IPAddress>* _resolve_address(
+        MemoryBuffer& buffer,
+        bool* is_domain_name);
+    bool _resolve_domain_name(MemoryBuffer& buffer);
     bool _do_command(const std::vector<IPAddress>* addresses = nullptr);
-
     bool _connect_remote(
         Socket&& sock,
-        const std::vector<IPAddress>* addresses
-    );
-
+        const std::vector<IPAddress>* addresses);
     void _remote_connected();
     bool _associate(Socket&& cl_sock, Socket&& rm_sock);
 
 private:
+    std::vector<DnsSocket*> _dns_sockets;
     Buffer _client_buffer;
     Buffer _remote_buffer;
     SocketInfo _peer_info;

@@ -5,6 +5,7 @@
 
 #include <sockspp/core/s5_enums.hpp>
 #include <sockspp/core/socket.hpp>
+#include <sockspp/core/ip_address.hpp>
 #include <sockspp/core/poller/poller.hpp>
 
 #include <vector>
@@ -25,6 +26,8 @@ public:
     const std::string& get_listen_ip() const;
     uint16_t get_listen_port() const;
     AuthMethod get_auth_method() const;
+    const std::string& get_dns_ip() const;
+    uint16_t get_dns_port() const;
 
     bool authenticate(
         const std::string& username,

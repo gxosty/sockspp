@@ -1,17 +1,16 @@
 #include "session.hpp"
 #include "server.hpp"
 #include "defs.hpp"
-#include "sockspp/core/s5_enums.hpp"
-#include "sockspp/server/remote_socket.hpp"
-#include "sockspp/server/udp_socket.hpp"
 
-#include <cerrno>
-#include <exception>
 #include <sockspp/core/s5.hpp>
 #include <sockspp/core/errno.hpp>
 #include <sockspp/core/memory_buffer.hpp>
 #include <sockspp/core/poller/event.hpp>
 #include <sockspp/core/log.hpp>
+
+#include <cerrno>
+#include <exception>
+#include <algorithm>
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -45,6 +44,11 @@ Session::~Session()
 
     if (_udp_socket)
         delete _udp_socket;
+
+    for (auto dns_socket : _dns_sockets)
+    {
+        delete dns_socket;
+    }
 }
 
 void Session::initialize()
@@ -82,6 +86,13 @@ void Session::shutdown()
         _poller.remove_event(_udp_socket->get_socket().get_fd());
         _udp_socket->get_socket().shutdown();
         _udp_socket->get_socket().close();
+    }
+
+    for (auto dns_socket : _dns_sockets)
+    {
+        _poller.remove_event(dns_socket->get_socket().get_fd());
+        dns_socket->get_socket().shutdown();
+        dns_socket->get_socket().close();
     }
 }
 
@@ -208,6 +219,42 @@ bool Session::process_udp_event(Event::Flags event_flags)
     return _process_client(buffer, &addr, addr_len);
 }
 
+bool Session::process_dns_event(Event::Flags event_flags, DnsSocket* dns_socket)
+{
+    if (event_flags & (Event::Closed | Event::Error))
+    {
+        LOGE("DNS Query event Closed || Error");
+        return false;
+    }
+
+    std::vector<IPAddress>* addresses = new std::vector<IPAddress>();
+    int status = dns_socket->get_response(addresses);
+
+    _dns_sockets.erase(std::find(
+        _dns_sockets.begin(),
+        _dns_sockets.end(),
+        dns_socket
+    ));
+    LOGI("addresses size : %llu", addresses->size());
+
+    _poller.remove_event(dns_socket->get_socket().get_fd());
+
+    delete dns_socket;
+
+    if (status == 0)
+    {
+        LOGE("DNS Response size: 0");
+        return 0;
+    }
+    else if (status == -1)
+    {
+        LOGE("DNS Response receive error (errno: %d)", sockerrno);
+        return -1;
+    }
+
+    return _do_command(addresses);
+}
+
 bool Session::reply_remote_connection(
     Reply reply,
     AddrType addr_type,
@@ -253,6 +300,9 @@ bool Session::_process_client(MemoryBuffer& buffer, void* addr, int addr_len)
 
             return _do_command(addresses);
         }
+    case Session::State::ResolvingDomainName:
+        LOGE("Client event occured when resolving domain name");
+        return false;
     case Session::State::Connected:
         LOGD(
             "TCP | %s -> %s | %llu",
@@ -504,7 +554,8 @@ std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is
             return addresses;
         }
     case AddrType::DomainName:
-        // *is_domain_name = true;
+        *is_domain_name = _resolve_domain_name(buffer);
+        return nullptr;
     default:
         LOGW("Unsupported address type: %d", static_cast<int>(type));
         {
@@ -519,6 +570,62 @@ std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is
     }
 
     return nullptr;
+}
+
+bool Session::_resolve_domain_name(MemoryBuffer& buffer)
+{
+    if (_dns_sockets.size() >= SOCKSPP_SESSION_MAX_DNS_SOCKETS)
+    {
+        return false;
+    }
+
+    IPAddress dns_address(
+        _server.get_dns_ip(),
+        _server.get_dns_port()
+    );
+
+    Socket sock = dns_address.get_version() == IPAddress::Version::IPv4
+        ? Socket::open_udp()
+        : Socket::open_udp6();
+
+    S5CommandMessage message(buffer.as<uint8_t*>());
+    S5Address address = message.get_address();
+
+    uint8_t* domain_name_data = address.get_address();
+    std::string domain_name((char*)domain_name_data+1, *domain_name_data);
+    uint16_t port = address.get_port();
+
+    DnsSocket* dns_socket = new DnsSocket(
+        std::move(sock),
+        domain_name,
+        port
+    );
+
+    dns_socket->set_session(*this);
+
+    _dns_sockets.push_back(dns_socket);
+
+    _poller.set_event(
+        dns_socket->get_socket().get_fd(),
+        dns_socket,
+        static_cast<Event::Flags>(Event::Read | Event::Closed)
+    );
+
+    _set_state(Session::State::ResolvingDomainName);
+    int status = dns_socket->query(dns_address);
+
+    if (status == 0)
+    {
+        LOGE("DNS Query error");
+        return false;
+    }
+    else if (status == -1)
+    {
+        LOGE("DNS Query error (errno: %d)", sockerrno);
+        return false;
+    }
+
+    return status > 0;
 }
 
 bool Session::_do_command(

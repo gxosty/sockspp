@@ -46,6 +46,16 @@ AuthMethod Server::get_auth_method() const
     return AuthMethod::UserPass;
 }
 
+const std::string& Server::get_dns_ip() const
+{
+    return _params.dns_ip;
+}
+
+uint16_t Server::get_dns_port() const
+{
+    return _params.dns_port;
+}
+
 bool Server::authenticate(
     const std::string& username,
     const std::string& password
