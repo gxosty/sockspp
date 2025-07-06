@@ -154,7 +154,7 @@ void Server::serve()
     {
         events.clear();
 
-        // workaround for Window because it does not trigger EINTR
+        // workaround for Windows because it does not trigger EINTR
         // that's why setting timeout to -1 is not preferred there
         int res = poller.poll(events, SOCKSPP_POLL_TIMEOUT);
 

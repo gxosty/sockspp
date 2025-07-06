@@ -14,6 +14,8 @@ The primary goal of sockspp is to provide a robust, cross-platform, and fully as
 
 * IPv4 and IPv6: Full support for both IPv4 and IPv6 addresses.
 
+* Domain name resolution support
+
 * Asynchronous/Event-Driven: Designed from the ground up with an event-driven architecture to avoid the complexities and overhead of multiple threads.
 
 * Cross-Platform: Built with cross-platform compatibility in mind.
@@ -22,17 +24,15 @@ The primary goal of sockspp is to provide a robust, cross-platform, and fully as
 
 The following features are planned for future development:
 
-* Domain Name Resolution: Implementation of domain name resolution for target addresses.
-
 * BIND Command: While not a primary focus, the BIND command might be considered in the future, though it is less common for typical SOCKS5 server use cases.
 
 ### Why sockspp?
 
-This project was initiated out of a need for a modern C++ SOCKS5 server that:
+This project was initiated out of a need for a C++ SOCKS5 server that:
 
 * Does not rely on a multi-threaded design for its core operations.
 
-* Aims to support all essential SOCKS5 commands (specifically CONNECT and UDP ASSOCIATE).
+* Aims to support all essential SOCKS5 commands (specifically CONNECT and UDP ASSOCIATE) and address types.
 
 * Is designed for cross-platform compatibility.
 
@@ -53,4 +53,4 @@ Contributions are welcome! If you find bugs, have feature suggestions, or want t
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GPL-3.0 License - see the LICENSE file for details.
