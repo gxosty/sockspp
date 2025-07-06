@@ -85,6 +85,7 @@ private:
 
 private:
     std::vector<DnsSocket*> _dns_sockets;
+    std::string _domain_name;
     Buffer _client_buffer;
     Buffer _remote_buffer;
     SocketInfo _peer_info;

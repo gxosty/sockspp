@@ -590,12 +590,12 @@ bool Session::_resolve_domain_name(MemoryBuffer& buffer)
     S5Address address = message.get_address();
 
     uint8_t* domain_name_data = address.get_address();
-    std::string domain_name((char*)domain_name_data+1, *domain_name_data);
+    _domain_name = std::string((char*)domain_name_data+1, *domain_name_data);
     uint16_t port = address.get_port();
 
     DnsSocket* dns_socket = new DnsSocket(
         std::move(sock),
-        domain_name,
+        _domain_name,
         port
     );
 
@@ -697,9 +697,12 @@ void Session::_remote_connected()
     SocketInfo remote_info = _remote_socket->get_remote_info();
 
     LOGI(
-        "TCP CONNECT | cli:%s <-> rem:%s",
+        "TCP CONNECT | cli:%s <-> rem:%s%s",
         _peer_info.str().c_str(),
-        remote_info.str().c_str()
+        remote_info.str().c_str(),
+        _domain_name.empty()
+            ? ""
+            : (" (" + _domain_name + ")").c_str()
     );
 #endif
 

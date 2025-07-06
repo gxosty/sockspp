@@ -66,7 +66,7 @@ int UDPSocket::recv_from(
 
     if (remote_address_type == AddrType::DomainName)
     {
-        // sorry, we don't support it for udp
+        // sorry, we don't support it for udp... yet
         LOGD("remote_address_type == AddrType::DomainName");
         return 0;
     }

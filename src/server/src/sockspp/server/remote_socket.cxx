@@ -8,9 +8,11 @@
 #ifdef _WIN32
     #include <winsock2.h>
     #include <ws2tcpip.h>
+    #define SOCKSPP_EWOULDBLOCK WSAEWOULDBLOCK
 #else
     #include <sys/socket.h>
     #include <netinet/in.h>
+    #define SOCKSPP_EWOULDBLOCK EWOULDBLOCK
 #endif
 
 namespace sockspp::server
@@ -52,9 +54,13 @@ bool RemoteSocket::try_connect_next()
 {
     _connecting_idx++;
 
-    if (_connecting_idx < _addresses->size())
+    if (_connecting_idx <= _addresses->size())
     {
-        const IPAddress& addr = _addresses->at(_connecting_idx);
+        const IPAddress& addr = _addresses->at(
+            _connecting_idx == _addresses->size()
+            ? _connecting_idx-1
+            : _connecting_idx
+        );
         IPAddress::Version addr_ver = addr.get_version();
         sockaddr_storage sock_addr;
 
@@ -78,6 +84,21 @@ bool RemoteSocket::try_connect_next()
             _sock_addr->sin6_port = addr.get_netport();
         }
 
+        if (_connecting_idx == _addresses->size())
+        {
+            this->get_session().reply_remote_connection(
+                Reply::Unreachable,
+                addr_ver == IPAddress::Version::IPv4
+                    ? AddrType::IPv4
+                    : AddrType::IPv6,
+                addr.get_address(),
+                addr.get_port()
+            );
+
+            LOGE("TCP | Couldn't connect");
+            return false;
+        }
+
         LOG_SCOPE(LOG_LEVEL_DEBUG)
         {
             SocketInfo info;
@@ -92,7 +113,7 @@ bool RemoteSocket::try_connect_next()
                 : sizeof(sockaddr_in6)
         );
 
-        if (res < 0 && (sockerrno != EWOULDBLOCK)) {
+        if (res < 0 && (sockerrno != SOCKSPP_EWOULDBLOCK)) {
             // TODO: Reply based on errno and fix reply address
             this->get_session().reply_remote_connection(
                 Reply::GeneralFailure,
@@ -108,7 +129,6 @@ bool RemoteSocket::try_connect_next()
         return true;
     }
 
-    LOGE("TCP | Couldn't connect");
     return false;
 }
 
