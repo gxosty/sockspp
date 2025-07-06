@@ -123,7 +123,7 @@ bool Session::process_client_event(Event::Flags event_flags)
     }
     else if (status == -1)
     {
-        LOGE("Client receive error (errno: %d, session state: %hhu)", sockerrno, _state);
+        LOGE("Client receive error (errno: %d, session state: %d)", sockerrno, (int)_state);
         return false;
     }
 
@@ -172,7 +172,11 @@ bool Session::process_remote_event(Event::Flags event_flags)
     }
     else if (_state == Session::State::Associated)
     {
-        status = _remote_socket->recv_from(buffer, &addr, &addr_len);
+        status = _remote_socket->recv_from(
+            buffer,
+            &addr,
+            reinterpret_cast<int*>(&addr_len)
+        );
     }
 
     if (status == 0)
@@ -181,7 +185,7 @@ bool Session::process_remote_event(Event::Flags event_flags)
     }
     else if (status == -1)
     {
-        LOGE("Remote receive error (errno: %d, session state: %hhu)", sockerrno, _state);
+        LOGE("Remote receive error (errno: %d, session state: %d)", sockerrno, (int)_state);
         return false;
     }
 
@@ -204,7 +208,11 @@ bool Session::process_udp_event(Event::Flags event_flags)
 
     sockaddr_storage addr;
     socklen_t addr_len = sizeof(addr);
-    int status = _udp_socket->recv_from(buffer, &addr, &addr_len);
+    int status = _udp_socket->recv_from(
+        buffer,
+        &addr,
+        reinterpret_cast<int*>(&addr_len)
+    );
 
     if (status == 0)
     {
@@ -303,7 +311,7 @@ bool Session::_process_client(MemoryBuffer& buffer, void* addr, int addr_len)
         return false;
     case Session::State::Connected:
         LOGD(
-            "TCP | %s -> %s | %llu",
+            "TCP | %s -> %s | %zu",
             _peer_info.str().c_str(),
             _remote_socket->get_remote_info().str().c_str(),
             buffer.get_size()
@@ -326,7 +334,7 @@ bool Session::_process_remote(MemoryBuffer& buffer, void* addr, int addr_len)
     {
     case Session::State::Connected:
         LOGD(
-            "TCP | %s <- %s | %llu",
+            "TCP | %s <- %s | %zu",
             _peer_info.str().c_str(),
             _remote_socket->get_remote_info().str().c_str(),
             buffer.get_size()
@@ -553,10 +561,9 @@ std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is
         }
     case AddrType::DomainName:
         *is_domain_name = _resolve_domain_name(buffer);
-        return nullptr;
-    default:
-        LOGW("Unsupported address type: %d", static_cast<int>(type));
+        if (!*is_domain_name)
         {
+            LOGE("DNS resolution is disabled");
             _client_socket->send_reply(
                 Reply::AddrTypeNotSupported,
                 type,
@@ -564,6 +571,15 @@ std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is
                 address.get_port()
             );
         }
+        return nullptr;
+    default:
+        LOGE("Unsupported address type: %d", static_cast<int>(type));
+        _client_socket->send_reply(
+            Reply::AddrTypeNotSupported,
+            type,
+            address.get_address(),
+            address.get_port()
+        );
         break;
     }
 
@@ -573,6 +589,11 @@ std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is
 bool Session::_resolve_domain_name(MemoryBuffer& buffer)
 {
     if (_dns_sockets.size() >= SOCKSPP_SESSION_MAX_DNS_SOCKETS)
+    {
+        return false;
+    }
+
+    if (_server.get_dns_ip().empty())
     {
         return false;
     }
@@ -669,6 +690,7 @@ bool Session::_connect_remote(
 ) {
     _remote_socket = new RemoteSocket(std::move(sock), addresses);
     _remote_socket->set_session(*this);
+    _set_state(Session::State::ConnectingRemote);
     if (!_remote_socket->process_event(Event::Error))  // start connect attempts
     {
         return false;
@@ -680,7 +702,6 @@ bool Session::_connect_remote(
         static_cast<Event::Flags>(Event::Write | Event::Closed)
     );
 
-    _set_state(Session::State::ConnectingRemote);
     return true;
 }
 
@@ -714,14 +735,17 @@ bool Session::_associate(Socket&& cl_sock, Socket&& rm_sock)
     sockaddr_storage bind_addr;
     socklen_t bind_addr_len = sizeof(bind_addr);
     SocketInfo client_bound_info = _client_socket->get_socket() .get_bound_address();
-    client_bound_info.to(&bind_addr, &bind_addr_len);
+    client_bound_info.to(
+        &bind_addr,
+        reinterpret_cast<int*>(&bind_addr_len)
+    );
 
     if (bind_addr.ss_family == AF_INET)
         reinterpret_cast<sockaddr_in*>(&bind_addr)->sin_port = 0;
     else
         reinterpret_cast<sockaddr_in6*>(&bind_addr)->sin6_port = 0;
 
-    if (cl_sock.bind(&bind_addr, bind_addr_len) == -1)
+    if (cl_sock.bind(&bind_addr, static_cast<int>(bind_addr_len)) == -1)
     {
         LOGE("cl_sock.bind() == -1: %d", sockerrno);
         return false;

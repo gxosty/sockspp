@@ -9,10 +9,14 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #define SOCKSPP_EWOULDBLOCK WSAEWOULDBLOCK
+    #define SOCKSPP_EAGAIN WSAEWOULDBLOCK
+    #define SOCKSPP_EINPROGRESS WSAEINPROGRESS
 #else
     #include <sys/socket.h>
     #include <netinet/in.h>
     #define SOCKSPP_EWOULDBLOCK EWOULDBLOCK
+    #define SOCKSPP_EAGAIN EWOULDBLOCK
+    #define SOCKSPP_EINPROGRESS EINPROGRESS
 #endif
 
 namespace sockspp::server
@@ -113,7 +117,12 @@ bool RemoteSocket::try_connect_next()
                 : sizeof(sockaddr_in6)
         );
 
-        if (res < 0 && (sockerrno != SOCKSPP_EWOULDBLOCK)) {
+        if (res < 0
+            && (sockerrno != SOCKSPP_EWOULDBLOCK)
+            && (sockerrno != SOCKSPP_EAGAIN)
+            && (sockerrno != SOCKSPP_EINPROGRESS))
+        {
+            LOGE("TCP | ::connect(...) == -1 (errno == %d)", sockerrno);
             // TODO: Reply based on errno and fix reply address
             this->get_session().reply_remote_connection(
                 Reply::GeneralFailure,

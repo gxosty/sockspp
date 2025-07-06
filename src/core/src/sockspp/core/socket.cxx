@@ -242,7 +242,7 @@ int Socket::recv_from(
         size,
         flags,
         reinterpret_cast<sockaddr*>(sock_addr),
-        sock_addr_len
+        reinterpret_cast<socklen_t*>(sock_addr_len)
     );
 }
 

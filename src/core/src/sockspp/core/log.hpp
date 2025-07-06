@@ -79,7 +79,7 @@ inline LogLevel _loglevel = LogLevel::Off;
     tm _tm_time = *localtime(&_c_time); \
     char _time_buffer[24]; \
     size_t _size = strftime(_time_buffer, 24, "%H:%M:%S", &_tm_time); \
-    sprintf(&_time_buffer[_size], ".%03llu", _milliseconds); \
+    sprintf(&_time_buffer[_size], ".%03lu", _milliseconds); \
     _SOCKSPP_IN_TTFL_LOG(_color, _tag, _time_buffer, _filename, _line) \
     fprintf(stderr, __VA_ARGS__); \
     fputs("\n", stderr); \

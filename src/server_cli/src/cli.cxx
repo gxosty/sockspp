@@ -72,6 +72,16 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
         .default_value("")
         .nargs(1);
 
+    parser.add_argument("--dns-ip")
+        .help("dns server ip")
+        .nargs(1);
+
+    parser.add_argument("--dns-port")
+        .help("dns server port")
+        .default_value((uint16_t)53)
+        .scan<'d', uint16_t>()
+        .nargs(1);
+
 #if !SOCKSPP_DISABLE_LOGS
     parser.add_argument("--log-level")
         .help("log/verbosity level")
@@ -92,6 +102,10 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
     uint16_t listen_port = parser.get<uint16_t>("--listen-port");
     std::string username = parser.get<std::string>("--username");
     std::string password = parser.get<std::string>("--password");
+    std::string dns_ip = parser.present("--dns-ip")
+        ? parser.get<std::string>("--dns-ip")
+        : "";
+    uint16_t dns_port = parser.get<uint16_t>("--dns-port");
 
 #if !SOCKSPP_DISABLE_LOGS
     std::string log_level_str = parser.get<std::string>("--log-level");
@@ -123,8 +137,8 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
         .listen_port = listen_port,
         .username = username,
         .password = password,
-        .dns_ip = "192.168.1.1",
-        .dns_port = 53
+        .dns_ip = dns_ip,
+        .dns_port = dns_port
     };
 }
 

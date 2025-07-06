@@ -120,7 +120,7 @@ int UDPSocket::recv_from(
         SocketInfo remote_info;
         remote_info.from(&remote_addr);
 
-        LOGD("UDP | %s -> %s | %llu",
+        LOGD("UDP | %s -> %s | %zu",
             info.str().c_str(),
             remote_info.str().c_str(),
             buffer.get_size()
@@ -205,7 +205,7 @@ int UDPSocket::send_to(
         SocketInfo client_info;
         client_info.from(&send_addr);
 
-        LOGD("UDP | %s <- %s | %llu",
+        LOGD("UDP | %s <- %s | %zu",
             client_info.str().c_str(),
             remote_info.str().c_str(),
             send_buffer.get_size()
