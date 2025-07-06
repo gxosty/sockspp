@@ -78,6 +78,13 @@ bool RemoteSocket::try_connect_next()
             _sock_addr->sin6_port = addr.get_netport();
         }
 
+        LOG_SCOPE(LOG_LEVEL_DEBUG)
+        {
+            SocketInfo info;
+            info.from(&sock_addr);
+            LOGD("TCP | Attempting to connect to %s", info.str().c_str());
+        }
+
         int res = this->get_socket().connect(
             reinterpret_cast<sockaddr*>(&sock_addr),
             addr_ver == IPAddress::Version::IPv4
@@ -85,7 +92,7 @@ bool RemoteSocket::try_connect_next()
                 : sizeof(sockaddr_in6)
         );
 
-        if (res < 0 && (sockerrno == EWOULDBLOCK)) {
+        if (res < 0 && (sockerrno != EWOULDBLOCK)) {
             // TODO: Reply based on errno and fix reply address
             this->get_session().reply_remote_connection(
                 Reply::GeneralFailure,
@@ -101,6 +108,7 @@ bool RemoteSocket::try_connect_next()
         return true;
     }
 
+    LOGE("TCP | Couldn't connect");
     return false;
 }
 
