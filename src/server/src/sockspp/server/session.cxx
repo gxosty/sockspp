@@ -37,6 +37,8 @@ Session::Session(
 
 Session::~Session()
 {
+    // delete sockets associated with this session
+
     delete _client_socket;
 
     if (_remote_socket)
@@ -69,6 +71,8 @@ void Session::initialize()
 void Session::shutdown()
 {
     LOGI("Shutdown cli:%s", _peer_info.str().c_str());
+
+    // shutdown and unregister all sockets associated with this session
 
     _poller.remove_event(_client_socket->get_socket().get_fd());
     _client_socket->get_socket().shutdown();
@@ -366,9 +370,11 @@ bool Session::_session_socket_send(
             && (sockerrno != EWOULDBLOCK)
             && (sockerrno != EAGAIN)
         ) {
+            // Error occured
             return false;
         }
 
+        // Schedule buffer for next WRITE event
         if (!is_scheduled || (res != -1))
         {
             size_t sent = res == -1 ? 0 : res;
@@ -376,6 +382,7 @@ bool Session::_session_socket_send(
             scheduled.copy_from(buffer->as<uint8_t*>() + sent, copy_size);
         }
 
+        // Listen for WRITE event
         if (!is_scheduled)
         {
             _poller.set_event(
@@ -388,8 +395,10 @@ bool Session::_session_socket_send(
     }
     else if (is_scheduled)
     {
+        // Sent scheduled buffer
         scheduled.set_size(0);
 
+        // Listen for READ event
         _poller.set_event(
             session_socket->get_socket().get_fd(),
             session_socket,
