@@ -46,7 +46,9 @@ int DnsSocket::query(const IPAddress& dns_address)
 
     message.setQr(0);
     message.setOpCode(0);
-    message.addQuery(new dns::QuerySection(_domain_name));
+    auto qs = new dns::QuerySection(_domain_name);
+    qs->setType(dns::RDATA_A);
+    message.addQuery(qs);
 
     LOGD("dns message: %s", message.asString().c_str());
 
