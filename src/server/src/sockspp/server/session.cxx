@@ -223,7 +223,6 @@ bool Session::process_dns_event(Event::Flags event_flags, DnsSocket* dns_socket)
 {
     if (event_flags & (Event::Closed | Event::Error))
     {
-        LOGE("DNS Query event Closed || Error");
         return false;
     }
 
@@ -235,7 +234,6 @@ bool Session::process_dns_event(Event::Flags event_flags, DnsSocket* dns_socket)
         _dns_sockets.end(),
         dns_socket
     ));
-    LOGI("addresses size : %llu", addresses->size());
 
     _poller.remove_event(dns_socket->get_socket().get_fd());
 

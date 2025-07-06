@@ -50,8 +50,6 @@ int DnsSocket::query(const IPAddress& dns_address)
     qs->setType(dns::RDATA_A);
     message.addQuery(qs);
 
-    LOGD("dns message: %s", message.asString().c_str());
-
     char _buffer[dns::MAX_MSG_LEN];
     uint32_t buffer_size = 0;
     message.encode(_buffer, dns::MAX_MSG_LEN, buffer_size);
@@ -79,7 +77,7 @@ int DnsSocket::query(const IPAddress& dns_address)
         send_addr_len = sizeof(sockaddr_in6);
     }
 
-    LOGD("DNS Query: %s", _domain_name.c_str());
+    LOGD("DNS QUERY | %s", _domain_name.c_str());
 
     return SessionSocket::send_to(
         buffer,
@@ -97,14 +95,11 @@ int DnsSocket::get_response(std::vector<IPAddress>* addresses)
 
     if (size <= 0)
     {
-        LOGE("size");
         return size;
     }
 
     dns::Message message;
     message.decode(_buffer, buffer.get_size());
-
-    LOGD("dns response: %s", message.asString().c_str());
 
     for (auto answer : message.getAnswers())
     {
