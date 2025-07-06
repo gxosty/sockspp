@@ -30,3 +30,10 @@ target_link_libraries(
     ${PROJECT_NAME} PUBLIC
     sockspp-core
 )
+
+if(WIN32)
+    target_link_libraries(
+        ${PROJECT_NAME} PUBLIC
+        iphlpapi
+    )
+endif()
