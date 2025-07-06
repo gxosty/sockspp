@@ -1,11 +1,14 @@
 #include "server.hpp"
 #include "session.hpp"
 #include "session_socket.hpp"
+#include "utils.hpp"
 #include "defs.hpp"
 
+#include <cctype>
 #include <sockspp/core/s5_enums.hpp>
 #include <sockspp/core/poller/poller.hpp>
 #include <sockspp/core/poller/event.hpp>
+#include <sockspp/core/utils.hpp>
 #include <sockspp/core/log.hpp>
 
 #include <vector>
@@ -23,6 +26,57 @@ namespace sockspp::server
 Server::Server(const ServerParams&& params)
     : _params(std::move(params))
 {
+    if (_params.dns_ip.empty())
+    {
+        _params.dns_ip = "auto";
+    }
+    else
+    {
+        std::transform(
+            _params.dns_ip.begin(),
+            _params.dns_ip.end(),
+            _params.dns_ip.begin(),
+            [](char c) -> char {
+                return std::tolower(c);
+            }
+        );
+    }
+
+    if (_params.dns_ip == "none")
+    {
+        LOGI("DNS server: None");
+        LOGW("Domain name resolution is disabled");
+        _params.dns_ip.clear();
+    }
+    else if (_params.dns_ip == "auto")
+    {
+        auto nameservers = sockspp::server::get_dns_nameservers();
+
+        if (nameservers.empty())
+        {
+            LOGW(
+                "Couldn't get OS dns server address,"
+                "dns resolution will be disabled"
+            );
+            _params.dns_ip.clear();
+        }
+        else
+        {
+            LOGI("DNS server: Auto (%s)", nameservers[0].c_str());
+            _params.dns_ip = nameservers[0];
+        }
+    }
+    else if (!sockspp::is_ip_address(_params.dns_ip))
+    {
+        LOGE("Invalid DNS server address: %s", _params.dns_ip.c_str());
+        LOGW("Domain name resolution is disabled");
+        _params.dns_ip.clear();
+    }
+    else
+    {
+        LOGI("DNS server: %s", _params.dns_ip.c_str());
+    }
+
     _sessions.reserve(128);
 }
 

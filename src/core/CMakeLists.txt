@@ -10,6 +10,7 @@ list(APPEND SOURCES
     src/sockspp/core/buffer.cxx
     src/sockspp/core/socket.cxx
     src/sockspp/core/ip_address.cxx
+    src/sockspp/core/utils.cxx
 
     # dnslib
     src/dnslib/buffer.cpp

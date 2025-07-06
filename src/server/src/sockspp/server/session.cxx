@@ -563,7 +563,7 @@ std::vector<IPAddress>* Session::_resolve_address(MemoryBuffer& buffer, bool* is
         *is_domain_name = _resolve_domain_name(buffer);
         if (!*is_domain_name)
         {
-            LOGE("DNS resolution is disabled");
+            LOGD("Attempted to resolve domain, but dns is `None`");
             _client_socket->send_reply(
                 Reply::AddrTypeNotSupported,
                 type,

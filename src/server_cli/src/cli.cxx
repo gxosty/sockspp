@@ -73,7 +73,13 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
         .nargs(1);
 
     parser.add_argument("--dns-ip")
-        .help("dns server ip")
+        .help(
+            "dns server ip\n"
+            "\"x.x.x.x\" = custom dns server\n"
+            "\"none\" = disable dns resolution\n"
+            "\"auto\" = default OS dns server address")
+        .default_value("auto")
+        .implicit_value("none")
         .nargs(1);
 
     parser.add_argument("--dns-port")
@@ -84,7 +90,9 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
 
 #if !SOCKSPP_DISABLE_LOGS
     parser.add_argument("--log-level")
-        .help("log/verbosity level")
+        .help(
+            "log/verbosity level\n"
+            "{off, error, warning, info, debug}")
         .default_value("off")
         .choices("off", "error", "warning", "info", "debug")
         .nargs(1);
@@ -102,9 +110,7 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
     uint16_t listen_port = parser.get<uint16_t>("--listen-port");
     std::string username = parser.get<std::string>("--username");
     std::string password = parser.get<std::string>("--password");
-    std::string dns_ip = parser.present("--dns-ip")
-        ? parser.get<std::string>("--dns-ip")
-        : "";
+    std::string dns_ip = parser.get<std::string>("--dns-ip");
     uint16_t dns_port = parser.get<uint16_t>("--dns-port");
 
 #if !SOCKSPP_DISABLE_LOGS

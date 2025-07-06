@@ -71,7 +71,7 @@ inline LogLevel _loglevel = LogLevel::Off;
 #endif // SOCKSPP_DISABLE_LOCATION_LOGS
 
 #define _SOCKSPP_TTFL_LOG(_color, _tag, _current_time, _filename, _line, ...) \
-    auto _milliseconds = \
+    unsigned long _milliseconds = \
         std::chrono::duration_cast<std::chrono::milliseconds>( \
             _current_time.time_since_epoch() \
         ).count() % 1000; \
