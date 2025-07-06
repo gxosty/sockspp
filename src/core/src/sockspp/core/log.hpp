@@ -112,6 +112,6 @@ inline LogLevel _loglevel = LogLevel::Off;
 #define LOGW(...)
 #define LOGE(...)
 #define SET_LOG_LEVEL(_level)
-#define LOG_SCOPE(_level)
+#define LOG_SCOPE(_level) if (false)
 
 #endif // SOCKSPP_DISABLE_LOGS
