@@ -226,6 +226,43 @@ void Server::serve()
                     }
 
                     _delete_session(session);
+
+                    int udp = 0;
+                    int tcp = 0;
+                    int dns = 0;
+                    int conn = 0;
+                    int undef = 0;
+
+                    for (auto session : _sessions)
+                    {
+                        Session::State state = session->get_state();
+
+                        switch (state)
+                        {
+                            case Session::State::Associated:
+                                udp++;
+                                break;
+                            case Session::State::Connected:
+                                tcp++;
+                                break;
+                            case Session::State::ResolvingDomainName:
+                                dns++;
+                                break;
+                            case Session::State::ConnectingRemote:
+                                conn++;
+                                break;
+                            default:
+                                undef++;
+                                break;
+                        }
+                    }
+
+                    LOGD(
+                        "Session count: %zu (udp: %d, tcp: %d, dns: %d, con: "
+                        "%d, undef: %d)",
+                        _sessions.size(),
+                        udp, tcp, dns, conn, undef
+                    );
                 }
             }
         }

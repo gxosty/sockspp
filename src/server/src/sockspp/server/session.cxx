@@ -100,6 +100,11 @@ void Session::shutdown()
     }
 }
 
+Session::State Session::get_state() const
+{
+    return _state;
+}
+
 bool Session::process_client_event(Event::Flags event_flags)
 {
     if (event_flags & (Event::Closed | Event::Error))
@@ -109,7 +114,7 @@ bool Session::process_client_event(Event::Flags event_flags)
 
     if (event_flags & Event::Write)
     {
-        return _session_socket_send(_client_socket, nullptr, _client_buffer);
+        return _session_socket_send(_client_socket, nullptr, _remote_socket, _client_buffer);
     }
 
     uint8_t _buffer[SOCKSPP_SESSION_SOCKET_BUFFER_SIZE];
@@ -156,7 +161,7 @@ bool Session::process_remote_event(Event::Flags event_flags)
         if (!_remote_socket->is_connected())
             return _remote_socket->could_connect();
 
-        return _session_socket_send(_remote_socket, nullptr, _remote_buffer);
+        return _session_socket_send(_remote_socket, nullptr, _client_socket, _remote_buffer);
     }
 
     uint8_t _buffer[SOCKSPP_SESSION_SOCKET_BUFFER_SIZE];
@@ -321,7 +326,12 @@ bool Session::_process_client(MemoryBuffer& buffer, void* addr, int addr_len)
             buffer.get_size()
         );
 
-        return _session_socket_send(_remote_socket, &buffer, _remote_buffer);
+        return _session_socket_send(
+            _remote_socket,
+            &buffer,
+            _client_socket,
+            _remote_buffer
+        );
     case Session::State::Associated:
         return _remote_socket->send_to(buffer, addr, addr_len);
     default:
@@ -343,7 +353,12 @@ bool Session::_process_remote(MemoryBuffer& buffer, void* addr, int addr_len)
             _remote_socket->get_remote_info().str().c_str(),
             buffer.get_size()
         );
-        return _session_socket_send(_client_socket, &buffer, _client_buffer);
+        return _session_socket_send(
+            _client_socket,
+            &buffer,
+            _remote_socket,
+            _client_buffer
+        );
     case Session::State::Associated:
         return _udp_socket->send_to(buffer, addr, addr_len);
     default:
@@ -357,6 +372,7 @@ bool Session::_process_remote(MemoryBuffer& buffer, void* addr, int addr_len)
 bool Session::_session_socket_send(
     SessionSocket* session_socket,
     MemoryBuffer* buffer,
+    SessionSocket* session_socket2,
     MemoryBuffer& scheduled
 ) {
     bool is_scheduled = scheduled.get_size() > 0;
@@ -367,8 +383,8 @@ bool Session::_session_socket_send(
     {
         if (
             (res == -1)
-            && (sockerrno != EWOULDBLOCK)
-            && (sockerrno != EAGAIN)
+            && (sockerrno != SOCKSPP_EWOULDBLOCK)
+            && (sockerrno != SOCKSPP_EAGAIN)
         ) {
             // Error occured
             return false;
@@ -385,10 +401,19 @@ bool Session::_session_socket_send(
         // Listen for WRITE event
         if (!is_scheduled)
         {
+            LOGD("Schedule");
+
             _poller.set_event(
                 session_socket->get_socket().get_fd(),
                 session_socket,
                 static_cast<Event::Flags>(Event::Write | Event::Closed),
+                true
+            );
+
+            _poller.set_event(
+                session_socket2->get_socket().get_fd(),
+                session_socket2,
+                Event::Closed,
                 true
             );
         }
@@ -402,6 +427,13 @@ bool Session::_session_socket_send(
         _poller.set_event(
             session_socket->get_socket().get_fd(),
             session_socket,
+            static_cast<Event::Flags>(Event::Read | Event::Closed),
+            true
+        );
+
+        _poller.set_event(
+            session_socket2->get_socket().get_fd(),
+            session_socket2,
             static_cast<Event::Flags>(Event::Read | Event::Closed),
             true
         );

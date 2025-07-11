@@ -44,6 +44,7 @@ public:
 
     void initialize();
     void shutdown();
+    State get_state() const;
 
     bool process_client_event(Event::Flags event_flags);
     bool process_remote_event(Event::Flags event_flags);
@@ -65,6 +66,7 @@ private:
     bool _session_socket_send(
         SessionSocket* session_socket,
         MemoryBuffer* buffer,
+        SessionSocket* session_socket2,
         MemoryBuffer& _scheduled
     );
 
