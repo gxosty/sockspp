@@ -227,42 +227,46 @@ void Server::serve()
 
                     _delete_session(session);
 
-                    int udp = 0;
-                    int tcp = 0;
-                    int dns = 0;
-                    int conn = 0;
-                    int undef = 0;
-
-                    for (auto session : _sessions)
+                    // Print active sessions
+                    LOG_SCOPE(LOG_LEVEL_DEBUG)
                     {
-                        Session::State state = session->get_state();
+                        int udp = 0;
+                        int tcp = 0;
+                        int dns = 0;
+                        int conn = 0;
+                        int other = 0;
 
-                        switch (state)
+                        for (auto session : _sessions)
                         {
-                            case Session::State::Associated:
-                                udp++;
-                                break;
-                            case Session::State::Connected:
-                                tcp++;
-                                break;
-                            case Session::State::ResolvingDomainName:
-                                dns++;
-                                break;
-                            case Session::State::ConnectingRemote:
-                                conn++;
-                                break;
-                            default:
-                                undef++;
-                                break;
-                        }
-                    }
+                            Session::State state = session->get_state();
 
-                    LOGD(
-                        "Session count: %zu (udp: %d, tcp: %d, dns: %d, con: "
-                        "%d, undef: %d)",
-                        _sessions.size(),
-                        udp, tcp, dns, conn, undef
-                    );
+                            switch (state)
+                            {
+                                case Session::State::Associated:
+                                    udp++;
+                                    break;
+                                case Session::State::Connected:
+                                    tcp++;
+                                    break;
+                                case Session::State::ResolvingDomainName:
+                                    dns++;
+                                    break;
+                                case Session::State::ConnectingRemote:
+                                    conn++;
+                                    break;
+                                default:
+                                    other++;
+                                    break;
+                            }
+                        }
+
+                        LOGD(
+                            "Session count: %zu (udp: %d, tcp: %d, dns: %d, con: "
+                            "%d, other: %d)",
+                            _sessions.size(),
+                            udp, tcp, dns, conn, other
+                        );
+                    }
                 }
             }
         }

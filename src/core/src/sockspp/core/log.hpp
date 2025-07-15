@@ -85,7 +85,7 @@ inline LogLevel _loglevel = LogLevel::Off;
     fputs("\n", stderr); \
 
 #define _SOCKSPP_LOG(_tag, _level, ...) \
-{ \
+if (_level <= _loglevel) { \
     auto _current_time = std::chrono::system_clock::now(); \
     const char* _color = NULL; \
     switch (_level) { \
