@@ -30,6 +30,25 @@ static inline void initialize()
 #ifdef _WIN32
     WSADATA wsa_data;
     WSAStartup(MAKEWORD(2, 2), &wsa_data);
+
+    // Enable vt sequence processing in Windows
+    HANDLE out_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    if (out_handle != INVALID_HANDLE_VALUE)
+    {
+        DWORD mode = 0;
+
+        if (!GetConsoleMode(out_handle, &mode))
+        {
+            return;
+        }
+
+        mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        if (!SetConsoleMode(out_handle, mode))
+        {
+            return;
+        }
+    }
 #endif
 }
 
