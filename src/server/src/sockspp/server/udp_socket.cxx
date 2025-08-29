@@ -21,7 +21,6 @@ UDPSocket::UDPSocket(Socket&& sock, SocketInfo client_info)
 {
     Socket& _sock = this->get_socket();
     _sock.set_blocking(false);
-    _sock.set_nodelay(true);
 }
 
 bool UDPSocket::process_event(Event::Flags event_flags)
