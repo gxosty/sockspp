@@ -28,6 +28,10 @@ public:
     AuthMethod get_auth_method() const;
     const std::string& get_dns_ip() const;
     uint16_t get_dns_port() const;
+    bool get_client_tcp_nodelay() const;
+    bool get_client_tcp_keepalive() const;
+    bool get_remote_tcp_nodelay() const;
+    bool get_remote_tcp_keepalive() const;
 
     bool authenticate(
         const std::string& username,

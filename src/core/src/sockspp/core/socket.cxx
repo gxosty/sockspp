@@ -121,6 +121,18 @@ bool Socket::set_nodelay(bool enabled)
     );
 }
 
+bool Socket::set_keepalive(bool enabled)
+{
+    int state = enabled ? 1 : 0;
+    return 0 == setsockopt(
+        _fd,
+        IPPROTO_TCP,
+        TCP_KEEPALIVE,
+        reinterpret_cast<const char*>(&state),
+        sizeof(state)
+    );
+}
+
 void Socket::connect(const std::string& ip, uint16_t port)
 {
     sockaddr_storage addr;

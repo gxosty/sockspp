@@ -110,6 +110,26 @@ uint16_t Server::get_dns_port() const
     return _params.dns_port;
 }
 
+bool Server::get_client_tcp_nodelay() const
+{
+    return _params.client_tcp_nodelay;
+}
+
+bool Server::get_client_tcp_keepalive() const
+{
+    return _params.client_tcp_keepalive;
+}
+
+bool Server::get_remote_tcp_nodelay() const
+{
+    return _params.remote_tcp_nodelay;
+}
+
+bool Server::get_remote_tcp_keepalive() const
+{
+    return _params.remote_tcp_keepalive;
+}
+
 bool Server::authenticate(
     const std::string& username,
     const std::string& password

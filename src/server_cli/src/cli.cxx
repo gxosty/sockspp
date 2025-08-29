@@ -107,6 +107,22 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
         .scan<'d', uint16_t>()
         .nargs(1);
 
+    parser.add_argument("--client-tcp-nodelay")
+        .help("enable tcp nodelay for client socket")
+        .flag();
+
+    parser.add_argument("--client-tcp-keepalive")
+        .help("enable tcp keepalive for client socket")
+        .flag();
+
+    parser.add_argument("--remote-tcp-nodelay")
+        .help("enable tcp nodelay for remote socket")
+        .flag();
+
+    parser.add_argument("--remote-tcp-keepalive")
+        .help("enable tcp keepalive for remote socket")
+        .flag();
+
 #if !SOCKSPP_DISABLE_LOGS
     parser.add_argument("--log-level")
         .help(
@@ -131,6 +147,10 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
     std::string password = parser.get<std::string>("--password");
     std::string dns_ip = parser.get<std::string>("--dns-ip");
     uint16_t dns_port = parser.get<uint16_t>("--dns-port");
+    bool client_tcp_nodelay = parser.get<bool>("--client-tcp-nodelay");
+    bool client_tcp_keepalive = parser.get<bool>("--client-tcp-keepalive");
+    bool remote_tcp_nodelay = parser.get<bool>("--remote-tcp-nodelay");
+    bool remote_tcp_keepalive = parser.get<bool>("--remote-tcp-keepalive");
 
 #if !SOCKSPP_DISABLE_LOGS
     std::string log_level_str = parser.get<std::string>("--log-level");
@@ -163,7 +183,11 @@ static inline sockspp::server::ServerParams parse_params(int argc, char* argv[])
         .username = username,
         .password = password,
         .dns_ip = dns_ip,
-        .dns_port = dns_port
+        .dns_port = dns_port,
+        .client_tcp_nodelay = client_tcp_nodelay,
+        .client_tcp_keepalive = client_tcp_keepalive,
+        .remote_tcp_nodelay = remote_tcp_nodelay,
+        .remote_tcp_keepalive = remote_tcp_keepalive
     };
 }
 

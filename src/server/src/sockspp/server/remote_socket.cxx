@@ -32,7 +32,6 @@ RemoteSocket::RemoteSocket(
 {
     Socket& _sock = this->get_socket();
     _sock.set_blocking(false);
-    _sock.set_nodelay(true);
 
     if (!addresses)
         _connected = true;

@@ -27,6 +27,7 @@ public:
 
     bool set_blocking(bool enabled);
     bool set_nodelay(bool enabled);
+    bool set_keepalive(bool enabled);
 
     void connect(const std::string& ip, uint16_t port);
     int connect(void* sock_addr, int sock_addr_len);

@@ -57,6 +57,10 @@ void Session::initialize()
 {
     _client_socket->set_session(*this);
 
+    Socket& _sock = _client_socket->get_socket();
+    _sock.set_nodelay(_server.get_client_tcp_nodelay());
+    _sock.set_keepalive(_server.get_client_tcp_keepalive());
+
     _poller.set_event(
         _client_socket->get_socket().get_fd(),
         _client_socket,
@@ -731,6 +735,10 @@ bool Session::_connect_remote(
 ) {
     _remote_socket = new RemoteSocket(std::move(sock), addresses);
     _remote_socket->set_session(*this);
+    Socket& _sock = _remote_socket->get_socket();
+    _sock.set_nodelay(_server.get_remote_tcp_nodelay());
+    _sock.set_keepalive(_server.get_remote_tcp_keepalive());
+
     _set_state(Session::State::ConnectingRemote);
     if (!_remote_socket->process_event(Event::Error))  // start connect attempts
     {
@@ -738,7 +746,7 @@ bool Session::_connect_remote(
     }
     
     _poller.set_event(
-        _remote_socket->get_socket().get_fd(),
+        _sock.get_fd(),
         _remote_socket,
         static_cast<Event::Flags>(Event::Write | Event::Closed)
     );
