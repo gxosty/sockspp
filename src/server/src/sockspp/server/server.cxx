@@ -337,7 +337,7 @@ bool Server::is_serving() const
 
 Socket Server::_accept_client()
 {
-    Socket client = _server_socket.accept();
+    Socket client = _hook->client_accept(_server_socket);
     return client;
 }
 

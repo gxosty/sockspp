@@ -132,7 +132,7 @@ bool Session::process_client_event(Event::Flags event_flags)
         SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
     );
 
-    int status = _client_socket->recv(buffer);
+    int status = _server.get_hook()->client_recv(*_client_socket, buffer);
 
     if (status == 0)
     {
@@ -188,11 +188,12 @@ bool Session::process_remote_event(Event::Flags event_flags)
 
     if (_state == Session::State::Connected)
     {
-        status = _remote_socket->recv(buffer);
+        status = _server.get_hook()->remote_recv(*_remote_socket, buffer);
     }
     else if (_state == Session::State::Associated)
     {
-        status = _remote_socket->recv_from(
+        status = _server.get_hook()->udp_recv_from(
+            *reinterpret_cast<UDPSocket*>(_remote_socket),
             buffer,
             &addr,
             reinterpret_cast<int*>(&addr_len)
@@ -345,7 +346,12 @@ bool Session::_process_client(MemoryBuffer& buffer, void* addr, int addr_len)
             _remote_buffer
         );
     case Session::State::Associated:
-        return _remote_socket->send_to(buffer, addr, addr_len);
+        return _server.get_hook()->udp_send_to(
+            *reinterpret_cast<UDPSocket*>(_remote_socket),
+            buffer,
+            addr,
+            addr_len
+        );
     default:
         break;
     }
@@ -389,7 +395,19 @@ bool Session::_session_socket_send(
 ) {
     bool is_scheduled = scheduled.get_size() > 0;
     MemoryBuffer& send_buffer = is_scheduled ? scheduled : *buffer;
-    int res = session_socket->send(send_buffer);
+
+    int res = -1;
+    const std::unique_ptr<ServerHook>& hook = _server.get_hook();
+
+    // I know, dirty, but hey, not that bad :)
+    if (_client_socket == session_socket)
+    {
+        res = hook->client_send(*reinterpret_cast<ClientSocket*>(session_socket), send_buffer);
+    }
+    else
+    {
+        res = hook->remote_send(*reinterpret_cast<RemoteSocket*>(session_socket), send_buffer);
+    }
 
     if (res != send_buffer.get_size())
     {
