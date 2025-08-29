@@ -33,13 +33,17 @@ Session::Session(
     , _remote_socket(nullptr)
     , _udp_socket(nullptr)
     , _client_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE)
-    , _remote_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE) {}
+    , _remote_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE)
+{
+    _server.get_hook()->on_server_accepted_client(_server, *_client_socket);
+}
 
 Session::~Session()
 {
     // delete sockets associated with this session
 
     delete _client_socket;
+    _server.get_hook()->on_client_disconnected(_server, *_client_socket);
 
     if (_remote_socket)
         delete _remote_socket;
@@ -145,8 +149,10 @@ bool Session::process_client_event(Event::Flags event_flags)
 
 bool Session::process_remote_event(Event::Flags event_flags)
 {
+    const std::unique_ptr<ServerHook>& hook = _server.get_hook();
     if (event_flags & Event::Closed)
     {
+        hook->on_remote_disconnected(_server, *_remote_socket);
         return false;
     }
 
@@ -157,6 +163,7 @@ bool Session::process_remote_event(Event::Flags event_flags)
             return _remote_socket->try_connect_next();
         }
 
+        hook->on_remote_disconnected(_server, *_remote_socket);
         return false;
     }
 
@@ -194,6 +201,7 @@ bool Session::process_remote_event(Event::Flags event_flags)
 
     if (status == 0)
     {
+        hook->on_remote_disconnected(_server, *_remote_socket);
         return false;
     }
     else if (status == -1)
@@ -777,6 +785,7 @@ void Session::_remote_connected()
 #endif
 
     _set_state(Session::State::Connected);
+    _server.get_hook()->on_remote_connected(_server, *_remote_socket);
 }
 
 bool Session::_associate(Socket&& cl_sock, Socket&& rm_sock)

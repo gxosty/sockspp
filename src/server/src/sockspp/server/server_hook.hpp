@@ -15,6 +15,7 @@ class Session;
 
 class ServerHook
 {
+public:
     // event hooks
     virtual void on_server_started(const Server& server) {}
     virtual void on_server_stopped(const Server& server) {}

@@ -181,6 +181,7 @@ void Server::serve()
     std::vector<Event> events;
     events.reserve(SOCKSPP_SERVER_INITIAL_POLL_RESULT_SIZE);
 
+    _hook->on_server_started(*this);
     while (this->is_serving())
     {
         events.clear();
@@ -319,6 +320,8 @@ void Server::serve()
     {
         this->stop();
     }
+
+    _hook->on_server_stopped(*this);
 }
 
 void Server::stop()
