@@ -1,6 +1,7 @@
 #pragma once
 
 #include "server_params.hpp"
+#include "server_hook.hpp"
 #include "session.hpp"
 
 #include <sockspp/core/s5_enums.hpp>
@@ -9,6 +10,7 @@
 #include <sockspp/core/poller/poller.hpp>
 
 #include <vector>
+#include <memory>
 
 namespace sockspp::server
 {
@@ -22,6 +24,9 @@ public:
     void serve();
     void stop();
     bool is_serving() const;
+
+    void set_hook(std::unique_ptr<ServerHook>&& hook);
+    const std::unique_ptr<ServerHook>& get_hook() const;
 
     const std::string& get_listen_ip() const;
     uint16_t get_listen_port() const;
@@ -46,6 +51,7 @@ private:
 
 private:
     ServerParams _params;
+    std::unique_ptr<ServerHook> _hook;
     std::vector<Session*> _sessions;
     Socket _server_socket;
 

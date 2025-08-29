@@ -78,6 +78,17 @@ Server::Server(const ServerParams&& params)
     }
 
     _sessions.reserve(128);
+    _hook = std::make_unique<ServerHook>();
+}
+
+void Server::set_hook(std::unique_ptr<ServerHook>&& hook)
+{
+    _hook = std::move(hook);
+}
+
+const std::unique_ptr<ServerHook>& Server::get_hook() const
+{
+    return _hook;
 }
 
 const std::string& Server::get_listen_ip() const
