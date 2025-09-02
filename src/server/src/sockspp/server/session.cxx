@@ -730,6 +730,7 @@ bool Session::_do_command(
                 ? Socket::open_tcp()
                 : Socket::open_tcp6();
 
+            _server.get_hook()->on_remote_socket_created(_server, sock);
             _connect_remote(std::move(sock), addresses);
         }
         break;
@@ -745,6 +746,7 @@ bool Session::_do_command(
                 ? Socket::open_udp()
                 : Socket::open_udp6();
 
+            _server.get_hook()->on_remote_socket_created(_server, rm_sock);
             return _associate(std::move(cl_sock), std::move(rm_sock));
         }
     case Command::Bind:

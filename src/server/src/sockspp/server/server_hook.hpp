@@ -21,6 +21,7 @@ public:
     virtual void on_server_stopped(const Server& server) {}
     virtual void on_server_accepted_client(const Server& server, const ClientSocket& client) {}
     virtual void on_client_disconnected(const Server& server, const ClientSocket& client) {}
+    virtual void on_remote_socket_created(const Server& server, const Socket& remote_socket) {}
     virtual void on_remote_connected(const Server& server, const RemoteSocket& remote) {}
     virtual void on_remote_disconnected(const Server& server, const RemoteSocket& remote) {}
 
