@@ -88,8 +88,8 @@ private:
 private:
     std::vector<DnsSocket*> _dns_sockets;
     std::string _domain_name;
-    Buffer _client_buffer;
-    Buffer _remote_buffer;
+    MemoryBuffer _client_buffer;
+    MemoryBuffer _remote_buffer;
     SocketInfo _peer_info;
     const Server& _server;
     Poller& _poller;

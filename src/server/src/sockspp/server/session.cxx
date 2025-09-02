@@ -32,8 +32,8 @@ Session::Session(
     , _client_socket(new ClientSocket(std::move(sock)))
     , _remote_socket(nullptr)
     , _udp_socket(nullptr)
-    , _client_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE)
-    , _remote_buffer(SOCKSPP_SESSION_SOCKET_BUFFER_SIZE)
+    , _client_buffer() // SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
+    , _remote_buffer()
 {
     _server.get_hook()->on_server_accepted_client(_server, *_client_socket);
 }
@@ -54,6 +54,16 @@ Session::~Session()
     for (auto dns_socket : _dns_sockets)
     {
         delete dns_socket;
+    }
+
+    if (_client_buffer.get_ptr())
+    {
+        delete reinterpret_cast<char*>(_client_buffer.get_ptr());
+    }
+
+    if (_remote_buffer.get_ptr())
+    {
+        delete reinterpret_cast<char*>(_remote_buffer.get_ptr());
     }
 }
 
@@ -425,6 +435,16 @@ bool Session::_session_socket_send(
         {
             size_t sent = res == -1 ? 0 : res;
             size_t copy_size = send_buffer.get_size() - sent;
+
+            if (scheduled.get_ptr() == nullptr)
+            {
+                scheduled = MemoryBuffer(
+                    new char[SOCKSPP_SESSION_SOCKET_BUFFER_SIZE],
+                    0,
+                    SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
+                );
+            }
+
             scheduled.copy_from(buffer->as<uint8_t*>() + sent, copy_size);
         }
 
