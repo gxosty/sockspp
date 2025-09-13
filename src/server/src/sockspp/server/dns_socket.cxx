@@ -19,6 +19,15 @@
 namespace sockspp::server
 {
 
+const char* _dns_rcodes[] = {
+    "No Error",
+    "Format Error",
+    "Server Failure",
+    "Name Error",
+    "Not Implemented",
+    "Refused"
+};
+
 DnsSocket::DnsSocket(
     Socket&& sock,
     const std::string& domain_name,
@@ -133,6 +142,15 @@ int DnsSocket::get_response(std::vector<IPAddress>* addresses)
                 );
             }
         }
+    }
+
+    if (addresses->empty())
+    {
+        LOGE(
+            "DNS QUERY no answer. Domain: %s, reason: \"%s\"",
+            _domain_name.c_str(),
+            _dns_rcodes[message.getRCode()]
+        );
     }
 
     return size;

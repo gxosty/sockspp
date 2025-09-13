@@ -84,6 +84,7 @@ void Session::initialize()
     _peer_info = _client_socket->get_socket().get_peer_address();
 
     _state = Session::State::Accepted;
+    LOGI("Initialize cli:%s", _peer_info.str().c_str());
 }
 
 void Session::shutdown()
@@ -269,25 +270,17 @@ bool Session::process_dns_event(Event::Flags event_flags, DnsSocket* dns_socket)
     std::vector<IPAddress>* addresses = new std::vector<IPAddress>();
     int status = dns_socket->get_response(addresses);
 
-    _dns_sockets.erase(std::find(
-        _dns_sockets.begin(),
-        _dns_sockets.end(),
-        dns_socket
-    ));
-
     _poller.remove_event(dns_socket->get_socket().get_fd());
-
-    delete dns_socket;
 
     if (status == 0)
     {
         LOGE("DNS Response size: 0");
-        return 0;
+        return false;
     }
     else if (status == -1)
     {
         LOGE("DNS Response receive error (errno: %d)", sockerrno);
-        return -1;
+        return false;
     }
 
     return _do_command(addresses);
@@ -741,6 +734,11 @@ bool Session::_resolve_domain_name(MemoryBuffer& buffer)
 bool Session::_do_command(
     const std::vector<IPAddress>* addresses
 ) {
+    if (!addresses || addresses->empty())
+    {
+        return false;
+    }
+
     switch (_command)
     {
     case Command::Connect:
