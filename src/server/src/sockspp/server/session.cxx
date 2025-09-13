@@ -29,7 +29,7 @@ Session::Session(
     Socket&& sock
 )   : _server(server)
     , _poller(poller)
-    , _client_socket(new ClientSocket(std::move(sock)))
+    , _client_socket(_server.get_hook()->create_client_socket(std::move(sock)))
     , _remote_socket(nullptr)
     , _udp_socket(nullptr)
     , _client_buffer() // SOCKSPP_SESSION_SOCKET_BUFFER_SIZE
@@ -779,7 +779,7 @@ bool Session::_connect_remote(
     Socket&& sock,
     const std::vector<IPAddress>* addresses
 ) {
-    _remote_socket = new RemoteSocket(std::move(sock), addresses);
+    _remote_socket = _server.get_hook()->create_remote_socket(std::move(sock), addresses);
     _remote_socket->set_session(*this);
     Socket& _sock = _remote_socket->get_socket();
     _sock.set_nodelay(_server.get_remote_tcp_nodelay());
@@ -868,7 +868,9 @@ bool Session::_associate(Socket&& cl_sock, Socket&& rm_sock)
         return false;
     }
 
-    _udp_socket = new UDPSocket(std::move(cl_sock), _peer_info);
+    auto& hook = _server.get_hook();
+
+    _udp_socket = hook->create_udp_socket(std::move(cl_sock), _peer_info);
     _udp_socket->set_session(*this);
 
     _poller.set_event(
@@ -877,7 +879,7 @@ bool Session::_associate(Socket&& cl_sock, Socket&& rm_sock)
         static_cast<Event::Flags>(Event::Read | Event::Closed)
     );
 
-    _remote_socket = new RemoteSocket(std::move(rm_sock), nullptr);
+    _remote_socket = hook->create_remote_socket(std::move(rm_sock), nullptr);
     _remote_socket->set_session(*this);
 
     _poller.set_event(

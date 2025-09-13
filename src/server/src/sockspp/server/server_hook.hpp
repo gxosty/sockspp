@@ -26,6 +26,21 @@ public:
     virtual void on_remote_disconnected(const Server& server, const RemoteSocket& remote) {}
 
     // behavior hooks
+    virtual ClientSocket* create_client_socket(Socket&& sock)
+    {
+        return new ClientSocket(std::move(sock));
+    }
+
+    virtual RemoteSocket* create_remote_socket(Socket&& sock, const std::vector<IPAddress>* addresses)
+    {
+        return new RemoteSocket(std::move(sock), addresses);
+    }
+
+    virtual UDPSocket* create_udp_socket(Socket&& sock, const SocketInfo& client_info)
+    {
+        return new UDPSocket(std::move(sock), client_info);
+    }
+    
     virtual sockspp::Socket client_accept(sockspp::Socket& server_socket)
     {
         return server_socket.accept();
